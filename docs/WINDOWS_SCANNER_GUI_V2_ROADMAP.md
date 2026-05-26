@@ -63,3 +63,18 @@ Planned:
 - Package `pluto_windows_scanner` as a clean Windows release.
 - Include GUI, backend executables/DLLs, configs, launchers, docs, and empty `sessions/` folder.
 - Keep generated release ZIPs out of Git.
+
+## Phase 2 Completed
+
+- Added GUI controls for `pluto_spectrum_stream.exe`.
+- Added live spectrum process start/stop management.
+- Added parser for `SPECTRUM,...` backend output rows.
+- Added continuous spectrum and waterfall chart updates.
+- Kept Phase 1 scanner/listen/export workflow unchanged.
+
+## Phase 3 Candidate
+
+- Live peak detection from spectrum frames.
+- Add live peaks to the active-channel table.
+- Click/drag spectrum tuning.
+- One-click listen from a live peak.

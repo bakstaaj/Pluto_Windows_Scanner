@@ -1,13 +1,21 @@
 {
-  "RepoRoot": "",
+  "RepoRoot": "C:\\msys64\\home\\jim\\sdrdev\\pluto_windows_scanner",
   "Uri": "ip:192.168.2.1",
-  "RateHz": 960000,
+  "RateHz": 1000000,
   "BandwidthHz": 1000000,
   "SquelchDb": -65,
   "RxMode": "auto",
   "RxCombine": "max",
-  "SessionsDir": "sessions",
-  "BandsCsvPath": "configs/bands.csv",
+  "SessionsDir": "C:\\msys64\\home\\jim\\sdrdev\\pluto_windows_scanner\\sessions",
+  "BandsCsvPath": "C:\\msys64\\home\\jim\\sdrdev\\pluto_windows_scanner\\configs\\bands.csv",
   "ListenSeconds": 30,
-  "DefaultChirpMode": "NFM"
+  "DefaultChirpMode": "NFM",
+  "RepeatScan": true,
+  "RepeatDelaySeconds": 2,
+  "LiveCenterHz": 162550000,
+  "LiveFftSize": 512,
+  "LiveAverages": 2,
+  "LiveIntervalMs": 500,
+  "LiveGainMode": "slow_attack",
+  "LiveGainDb": ""
 }

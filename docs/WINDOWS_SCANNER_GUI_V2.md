@@ -94,7 +94,7 @@ cd ~/sdrdev/pluto_windows_scanner
 URI: ip:192.168.2.1
 RX mode: auto
 RX combine: max
-Sample rate: 960000
+Sample rate: 1000000
 Bandwidth: 1000000
 Squelch/threshold: -65 dBFS
 ```
@@ -113,3 +113,37 @@ The v2.0 starter GUI waterfall is not yet a continuous live IQ waterfall. It is 
 ## Phase 1 Update
 
 The Phase 1 GUI update adds repeat scanning, active-channel accumulation, hit counts, last/peak dBFS tracking, last-seen timestamps, a Clear List button, and an Open Last CSV button. See `docs/WINDOWS_SCANNER_GUI_V2_PHASE1.md` for install and test steps.
+
+## Phase 2 Live Spectrum Update
+
+Phase 2 adds a live spectrum/waterfall workflow backed by `bin/pluto_spectrum_stream.exe`.
+
+New Scanner-tab controls:
+
+```text
+Live Center Hz
+FFT
+Avg
+Interval ms
+Gain Mode
+Gain dB
+Use Selected
+Start Live Spectrum
+Stop Live
+```
+
+Recommended first live test:
+
+```text
+URI: ip:192.168.2.1
+Live Center Hz: 162550000
+Rate: 1000000
+RF BW: 1000000
+FFT: 512
+Avg: 2
+Interval ms: 500
+Gain Mode: slow_attack
+Gain dB: blank
+```
+
+The live stream updates the top spectrum chart and waterfall continuously. The Phase 1 scan loop still controls the detected-active-channel table and CHIRP export.

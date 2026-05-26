@@ -90,7 +90,7 @@
                                 <Label Content="URI" />
                                 <TextBox x:Name="UriText" Text="ip:192.168.2.1" MinWidth="145" />
                                 <Label Content="Rate" />
-                                <TextBox x:Name="RateText" Text="960000" />
+                                <TextBox x:Name="RateText" Text="1000000" />
                                 <Label Content="RF BW" />
                                 <TextBox x:Name="BwText" Text="1000000" />
                                 <Label Content="RX Mode" />
@@ -121,6 +121,28 @@
                                 <Button x:Name="OpenLastCsvButton" Content="Open Last CSV" Click="OpenLastCsvButton_Click" />
                                 <TextBlock x:Name="StatusText" Text="Ready" Margin="16,8" Foreground="{StaticResource MutedTextBrush}" />
                             </WrapPanel>
+                            <WrapPanel VerticalAlignment="Center">
+                                <Label Content="Live Center Hz" />
+                                <TextBox x:Name="LiveCenterFreqText" Text="162550000" Width="110" />
+                                <Label Content="FFT" />
+                                <TextBox x:Name="LiveFftText" Text="512" Width="70" />
+                                <Label Content="Avg" />
+                                <TextBox x:Name="LiveAvgText" Text="2" Width="52" />
+                                <Label Content="Interval ms" />
+                                <TextBox x:Name="LiveIntervalText" Text="500" Width="64" />
+                                <Label Content="Gain Mode" />
+                                <ComboBox x:Name="LiveGainModeCombo" Width="110">
+                                    <ComboBoxItem Content="slow_attack" IsSelected="True" />
+                                    <ComboBoxItem Content="fast_attack" />
+                                    <ComboBoxItem Content="manual" />
+                                </ComboBox>
+                                <Label Content="Gain dB" />
+                                <TextBox x:Name="LiveGainDbText" Text="" Width="52" />
+                                <Button x:Name="UseSelectedForLiveButton" Content="Use Selected" Click="UseSelectedForLiveButton_Click" />
+                                <Button x:Name="StartLiveSpectrumButton" Content="Start Live Spectrum" Click="StartLiveSpectrumButton_Click" FontWeight="SemiBold" />
+                                <Button x:Name="StopLiveSpectrumButton" Content="Stop Live" Click="StopLiveSpectrumButton_Click" IsEnabled="False" />
+                                <TextBlock x:Name="LiveSpectrumStatusText" Text="Live spectrum idle" Margin="16,8" Foreground="{StaticResource MutedTextBrush}" />
+                            </WrapPanel>
                         </StackPanel>
                     </GroupBox>
 
@@ -132,13 +154,13 @@
                         <GroupBox Grid.Column="0" Header="Frequency Spectrum" Background="{StaticResource PanelBrush}">
                             <Grid>
                                 <Canvas x:Name="SpectrumCanvas" Background="#020617" SizeChanged="ChartCanvas_SizeChanged" ClipToBounds="True" />
-                                <TextBlock x:Name="SpectrumCaption" Text="Run a scan to populate the spectrum chart" Foreground="#94a3b8" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <TextBlock x:Name="SpectrumCaption" Text="Run a scan or start live spectrum to populate this chart" Foreground="#94a3b8" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Grid>
                         </GroupBox>
                         <GroupBox Grid.Column="1" Header="Waterfall History" Background="{StaticResource PanelBrush}">
                             <Grid>
                                 <Canvas x:Name="WaterfallCanvas" Background="#020617" SizeChanged="ChartCanvas_SizeChanged" ClipToBounds="True" />
-                                <TextBlock x:Name="WaterfallCaption" Text="Waterfall rows update after each completed scan" Foreground="#94a3b8" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <TextBlock x:Name="WaterfallCaption" Text="Waterfall rows update from scans and live spectrum frames" Foreground="#94a3b8" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Grid>
                         </GroupBox>
                     </Grid>
@@ -205,7 +227,7 @@
                         </GroupBox>
 
                         <GroupBox Header="v2.0 Development Notes" Background="{StaticResource PanelBrush}">
-                            <TextBlock TextWrapping="Wrap" Foreground="{StaticResource TextBrush}"><Run Text="This v2.0 phase adds a repeat-scan loop and accumulates active channels across passes. Spectrum and waterfall views are still populated from completed scan result levels. The next native integration step is a real-time spectrum/waterfall stream from pluto_spectrum_stream or a dedicated streaming backend." /></TextBlock>
+                            <TextBlock TextWrapping="Wrap" Foreground="{StaticResource TextBrush}"><Run Text="This v2.0 Phase 2 build adds a live spectrum/waterfall stream using pluto_spectrum_stream.exe while preserving the Phase 1 scan/listen/export workflow. Live spectrum frames are parsed from SPECTRUM CSV output and rendered at the top of the Scanner tab." /></TextBlock>
                         </GroupBox>
 
                         <WrapPanel>
@@ -218,6 +240,6 @@
             </TabItem>
         </TabControl>
 
-        <TextBlock Grid.Row="2" x:Name="FooterText" Text="v2.0 GUI starter — Windows host mode" Foreground="#94a3b8" Margin="6,8,6,0" />
+        <TextBlock Grid.Row="2" x:Name="FooterText" Text="v2.0 Phase 2 — Windows host GUI with live spectrum" Foreground="#94a3b8" Margin="6,8,6,0" />
     </Grid>
 </Window>

@@ -6,6 +6,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using IoPath = System.IO.Path;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -14,6 +15,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
 namespace PlutoWindowsScannerGui;
@@ -25,13 +27,24 @@ public partial class MainWindow : Window
     private readonly List<List<ScanPoint>> WaterfallHistory = new();
     private readonly List<ScanPoint> LastScanPoints = new();
     private Process? _scanProcess;
+    private Process? _spectrumProcess;
     private CancellationTokenSource? _scanLoopCts;
+    private CancellationTokenSource? _spectrumCts;
     private bool _scanLoopActive;
+    private bool _liveSpectrumActive;
     private int _scanNumber;
+    private int _liveSpectrumFrames;
+    private int _liveRenderQueued;
+    private long _lastLiveRenderTick;
     private AppConfig _config = new();
     private string _repoRoot = string.Empty;
     private string _lastScanCsv = string.Empty;
-    private const int MaxWaterfallRows = 120;
+    private const int MaxWaterfallRows = 60;
+    private const int LiveRenderIntervalMs = 250;
+    private const int MaxWaterfallBitmapWidth = 900;
+    private const int MaxWaterfallBitmapHeight = 260;
+    private const long DefaultSampleRateHz = 1000000;
+    private const long KnownInvalidSampleRateHz = 960000;
 
     public MainWindow()
     {
@@ -43,7 +56,12 @@ public partial class MainWindow : Window
         ApplyConfigToUi();
         LoadBands();
         DrawEmptyCharts();
-        Log("Windows Pluto SDR Scanner GUI v2.0 loaded.");
+        Closed += (_, _) =>
+        {
+            TryKillProcess(_scanProcess);
+            TryKillProcess(_spectrumProcess);
+        };
+        Log("Windows Pluto SDR Scanner GUI v2.0 Phase 2 loaded.");
         Log($"Project root: {_repoRoot}");
     }
 
@@ -90,7 +108,7 @@ public partial class MainWindow : Window
                 _scanLoopCts.Token.ThrowIfCancellationRequested();
                 _scanNumber++;
                 string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
-                _lastScanCsv = System.IO.Path.Combine(_config.SessionsDir, $"gui_scan_{timestamp}_{_scanNumber:000}.csv");
+                _lastScanCsv = IoPath.Combine(_config.SessionsDir, $"gui_scan_{timestamp}_{_scanNumber:000}.csv");
 
                 string args;
                 try
@@ -206,14 +224,16 @@ public partial class MainWindow : Window
             "--csv", Q(csvPath)
         };
 
-        AddOptionalNumericArg(args, "--rate", RateText.Text);
+        long safeRateHz = GetSafeRateHzFromUi();
+        args.Add("--rate");
+        args.Add(safeRateHz.ToString(CultureInfo.InvariantCulture));
         AddOptionalNumericArg(args, "--bw", BwText.Text);
 
         string mode = ComboText(ScanModeCombo);
         if (mode.Equals("Single Frequency", StringComparison.OrdinalIgnoreCase))
         {
             long freq = ParseLong(SingleFreqText.Text, "single frequency Hz");
-            string freqFile = System.IO.Path.Combine(_config.SessionsDir, "gui_single_frequency.csv");
+            string freqFile = IoPath.Combine(_config.SessionsDir, "gui_single_frequency.csv");
             File.WriteAllText(freqFile, "frequency_hz,label" + Environment.NewLine + $"{freq},GUI Single {freq / 1000000.0:F6} MHz" + Environment.NewLine);
             args.Add("--freq-file");
             args.Add(Q(freqFile));
@@ -246,6 +266,327 @@ public partial class MainWindow : Window
         if (!long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out _)) return;
         args.Add(name);
         args.Add(value);
+    }
+
+    private void StartLiveSpectrumButton_Click(object sender, RoutedEventArgs e)
+    {
+        _ = StartLiveSpectrumAsync();
+    }
+
+    private void StopLiveSpectrumButton_Click(object sender, RoutedEventArgs e)
+    {
+        StopLiveSpectrum("Stop requested by user.");
+    }
+
+    private void UseSelectedForLiveButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (ActiveChannelsGrid.SelectedItem is ActiveChannel selected)
+        {
+            LiveCenterFreqText.Text = selected.FrequencyHz.ToString(CultureInfo.InvariantCulture);
+            StatusText.Text = $"Live center set to {selected.FrequencyMhz} MHz.";
+            return;
+        }
+
+        try
+        {
+            long center;
+            string mode = ComboText(ScanModeCombo);
+            if (mode.Equals("Single Frequency", StringComparison.OrdinalIgnoreCase))
+            {
+                center = ParseLong(SingleFreqText.Text, "single frequency Hz");
+            }
+            else if (mode.Equals("Frequency Range", StringComparison.OrdinalIgnoreCase))
+            {
+                long start = ParseLong(StartFreqText.Text, "start Hz");
+                long stop = ParseLong(StopFreqText.Text, "stop Hz");
+                center = start + ((stop - start) / 2);
+            }
+            else if (BandCombo.SelectedItem is BandDefinition band)
+            {
+                center = band.StartHz + ((band.StopHz - band.StartHz) / 2);
+            }
+            else
+            {
+                center = ParseLong(SingleFreqText.Text, "single frequency Hz");
+            }
+
+            LiveCenterFreqText.Text = center.ToString(CultureInfo.InvariantCulture);
+            StatusText.Text = $"Live center set to {center / 1000000.0:F6} MHz.";
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Could not set live center", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private async Task StartLiveSpectrumAsync()
+    {
+        if (_liveSpectrumActive)
+        {
+            Log("Live spectrum is already running.");
+            return;
+        }
+
+        SaveUiToConfig();
+        SaveConfig();
+
+        string spectrumExe = FindTool("pluto_spectrum_stream.exe");
+        if (string.IsNullOrWhiteSpace(spectrumExe))
+        {
+            MessageBox.Show("pluto_spectrum_stream.exe was not found in bin/. Run ./tools/sync_backend_from_v1_repo.sh or reinstall the v2 package.", "Spectrum tool missing", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        string args;
+        try
+        {
+            args = BuildLiveSpectrumArguments();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Invalid live spectrum settings", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        _spectrumCts = new CancellationTokenSource();
+        _liveSpectrumActive = true;
+        _liveSpectrumFrames = 0;
+        _liveRenderQueued = 0;
+        _lastLiveRenderTick = 0;
+        StartLiveSpectrumButton.IsEnabled = false;
+        StopLiveSpectrumButton.IsEnabled = true;
+        SpectrumCaption.Visibility = Visibility.Collapsed;
+        WaterfallCaption.Visibility = Visibility.Collapsed;
+        LiveSpectrumStatusText.Text = "Starting live spectrum...";
+        StatusText.Text = "Starting live spectrum...";
+
+        var psi = new ProcessStartInfo(spectrumExe, args)
+        {
+            WorkingDirectory = _repoRoot,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true
+        };
+
+        _spectrumProcess = new Process { StartInfo = psi, EnableRaisingEvents = true };
+        _spectrumProcess.OutputDataReceived += (_, ev) =>
+        {
+            if (string.IsNullOrWhiteSpace(ev.Data)) return;
+
+            string line = ev.Data;
+            if (line.StartsWith("SPECTRUM,", StringComparison.OrdinalIgnoreCase))
+            {
+                // Live spectrum can arrive faster than WPF can render. Keep only one
+                // pending render queued so Stop Live and the rest of the UI remain responsive.
+                if (Interlocked.CompareExchange(ref _liveRenderQueued, 1, 0) != 0)
+                    return;
+
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    try { HandleLiveSpectrumLine(line); }
+                    finally { Interlocked.Exchange(ref _liveRenderQueued, 0); }
+                }));
+                return;
+            }
+
+            Dispatcher.BeginInvoke(new Action(() => HandleLiveSpectrumLine(line)));
+        };
+        _spectrumProcess.ErrorDataReceived += (_, ev) =>
+        {
+            if (string.IsNullOrWhiteSpace(ev.Data)) return;
+            Dispatcher.BeginInvoke(new Action(() => Log("LIVE ERR: " + ev.Data)));
+        };
+
+        try
+        {
+            Log("Starting live spectrum stream:");
+            Log($"  {spectrumExe}");
+            Log($"  {args}");
+            _spectrumProcess.Start();
+            _spectrumProcess.BeginOutputReadLine();
+            _spectrumProcess.BeginErrorReadLine();
+            await _spectrumProcess.WaitForExitAsync(_spectrumCts.Token);
+            int exitCode = _spectrumProcess.ExitCode;
+            Log($"Live spectrum exited with code {exitCode}.");
+            LiveSpectrumStatusText.Text = $"Live spectrum stopped. Frames: {_liveSpectrumFrames}.";
+        }
+        catch (OperationCanceledException)
+        {
+            TryKillProcess(_spectrumProcess);
+            Log("Live spectrum stopped by user.");
+            LiveSpectrumStatusText.Text = $"Live spectrum stopped. Frames: {_liveSpectrumFrames}.";
+        }
+        catch (Exception ex)
+        {
+            Log("Live spectrum failed: " + ex.Message);
+            LiveSpectrumStatusText.Text = "Live spectrum failed.";
+            MessageBox.Show(ex.Message, "Live spectrum failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            StartLiveSpectrumButton.IsEnabled = true;
+            StopLiveSpectrumButton.IsEnabled = false;
+            _liveSpectrumActive = false;
+            _spectrumProcess = null;
+            _spectrumCts?.Dispose();
+            _spectrumCts = null;
+            StatusText.Text = $"Ready. Live frames: {_liveSpectrumFrames}; active channels: {ActiveChannels.Count}.";
+        }
+    }
+
+    private string BuildLiveSpectrumArguments()
+    {
+        long centerHz = ParseLong(LiveCenterFreqText.Text, "live center Hz");
+        long rateHz = GetSafeRateHzFromUi();
+        long bwHz = ParseLongOrDefault(BwText.Text, rateHz);
+        int fft = (int)Math.Clamp(ParseLongOrDefault(LiveFftText.Text, 512), 256, 65536);
+        int avg = (int)Math.Clamp(ParseLongOrDefault(LiveAvgText.Text, 2), 1, 1000);
+        int intervalMs = (int)Math.Clamp(ParseLongOrDefault(LiveIntervalText.Text, 500), 0, 60000);
+        string gainMode = ComboText(LiveGainModeCombo);
+
+        var args = new List<string>
+        {
+            "--uri", Q(UriText.Text.Trim()),
+            "--freq", centerHz.ToString(CultureInfo.InvariantCulture),
+            "--rate", rateHz.ToString(CultureInfo.InvariantCulture),
+            "--bw", bwHz.ToString(CultureInfo.InvariantCulture),
+            "--fft", fft.ToString(CultureInfo.InvariantCulture),
+            "--avg", avg.ToString(CultureInfo.InvariantCulture),
+            "--interval-ms", intervalMs.ToString(CultureInfo.InvariantCulture),
+            "--frames", "0",
+            "--gain-mode", Q(gainMode)
+        };
+
+        string gainDb = LiveGainDbText.Text.Trim();
+        if (!string.IsNullOrWhiteSpace(gainDb))
+        {
+            if (!int.TryParse(gainDb, NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
+                throw new InvalidOperationException("Gain dB must be a whole number, or leave it blank for automatic gain.");
+            args.Add("--gain-db");
+            args.Add(gainDb);
+        }
+
+        return string.Join(" ", args);
+    }
+
+    private void StopLiveSpectrum(string reason)
+    {
+        try
+        {
+            _spectrumCts?.Cancel();
+            TryKillProcess(_spectrumProcess);
+            Log("Live spectrum stop requested: " + reason);
+            LiveSpectrumStatusText.Text = "Stopping live spectrum...";
+        }
+        catch (Exception ex)
+        {
+            Log("Live spectrum stop failed: " + ex.Message);
+        }
+    }
+
+    private void HandleLiveSpectrumLine(string line)
+    {
+        if (line.StartsWith("SPECTRUM,", StringComparison.OrdinalIgnoreCase))
+        {
+            long now = Environment.TickCount64;
+            if (_lastLiveRenderTick != 0 && now - _lastLiveRenderTick < LiveRenderIntervalMs)
+                return;
+            _lastLiveRenderTick = now;
+
+            if (TryParseSpectrumFrame(line, out var points, out long centerHz, out long rateHz, out int frameNumber))
+            {
+                LastScanPoints.Clear();
+                LastScanPoints.AddRange(points);
+                WaterfallHistory.Add(points);
+                while (WaterfallHistory.Count > MaxWaterfallRows) WaterfallHistory.RemoveAt(0);
+                DrawSpectrum();
+                DrawWaterfall();
+                _liveSpectrumFrames++;
+                LiveSpectrumStatusText.Text = $"Live frame {frameNumber}; center {centerHz / 1000000.0:F6} MHz; span {rateHz / 1000000.0:F3} MHz; bins {points.Count}; render {LiveRenderIntervalMs} ms.";
+            }
+            else
+            {
+                Log("LIVE: Could not parse spectrum frame header.");
+            }
+            return;
+        }
+
+        if (line.StartsWith("STATUS,", StringComparison.OrdinalIgnoreCase))
+        {
+            string status = line.Length > 7 ? line[7..] : line;
+            LiveSpectrumStatusText.Text = status;
+            Log("LIVE: " + line);
+            return;
+        }
+
+        Log("LIVE: " + line);
+    }
+
+    private bool TryParseSpectrumFrame(string line, out List<ScanPoint> points, out long centerHz, out long rateHz, out int frameNumber)
+    {
+        points = new List<ScanPoint>();
+        centerHz = 0;
+        rateHz = 0;
+        frameNumber = 0;
+
+        string[] values = SplitCsv(line);
+        if (values.Length < 10) return false;
+        if (!int.TryParse(values[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out frameNumber)) return false;
+        if (!long.TryParse(values[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out centerHz)) return false;
+        if (!long.TryParse(values[3], NumberStyles.Integer, CultureInfo.InvariantCulture, out rateHz)) return false;
+        _ = int.TryParse(values[4], NumberStyles.Integer, CultureInfo.InvariantCulture, out int fftBins);
+
+        int powerStart = FindSpectrumPowerStart(values, fftBins);
+        if (powerStart < 0 || powerStart >= values.Length) return false;
+
+        var powers = new List<double>();
+        for (int i = powerStart; i < values.Length; i++)
+        {
+            if (double.TryParse(values[i], NumberStyles.Float, CultureInfo.InvariantCulture, out double db))
+                powers.Add(db);
+        }
+        if (powers.Count == 0) return false;
+
+        double startHz = centerHz - (rateHz / 2.0);
+        double binHz = rateHz / Math.Max(1.0, powers.Count);
+
+        for (int i = 0; i < powers.Count; i++)
+        {
+            long freq = (long)Math.Round(startHz + ((i + 0.5) * binHz));
+            double db = powers[i];
+            // Live spectrum bins are display data, not discrete active-channel detections.
+            // Leaving Active=false prevents thousands of orange marker lines from saturating the spectrum panel.
+            points.Add(new ScanPoint(freq, db, false));
+        }
+
+        return true;
+    }
+
+    private static int FindSpectrumPowerStart(string[] values, int fftBins)
+    {
+        if (fftBins > 0)
+        {
+            int[] candidates = { 7, 6, 5 };
+            foreach (int candidate in candidates)
+            {
+                int available = values.Length - candidate;
+                if (available >= Math.Max(16, fftBins / 2))
+                    return candidate;
+            }
+        }
+
+        for (int i = 5; i < values.Length; i++)
+        {
+            int numeric = 0;
+            for (int j = i; j < values.Length; j++)
+            {
+                if (double.TryParse(values[j], NumberStyles.Float, CultureInfo.InvariantCulture, out _))
+                    numeric++;
+            }
+            if (numeric >= 16) return i;
+        }
+        return -1;
     }
 
     private void StopScanButton_Click(object sender, RoutedEventArgs e)
@@ -325,8 +666,8 @@ public partial class MainWindow : Window
 
         string mode = NormalizeAudioMode(selected.Mode);
         string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
-        string wav = System.IO.Path.Combine(_config.SessionsDir, $"listen_{selected.FrequencyHz}_{timestamp}.wav");
-        string csv = System.IO.Path.Combine(_config.SessionsDir, "audio_log.csv");
+        string wav = IoPath.Combine(_config.SessionsDir, $"listen_{selected.FrequencyHz}_{timestamp}.wav");
+        string csv = IoPath.Combine(_config.SessionsDir, "audio_log.csv");
 
         var args = new List<string>
         {
@@ -364,7 +705,7 @@ public partial class MainWindow : Window
             proc.BeginErrorReadLine();
             await proc.WaitForExitAsync();
             Log($"Audio recorder exited with code {proc.ExitCode}.");
-            StatusText.Text = File.Exists(wav) ? $"Audio saved: {System.IO.Path.GetFileName(wav)}" : "Audio recorder finished.";
+            StatusText.Text = File.Exists(wav) ? $"Audio saved: {IoPath.GetFileName(wav)}" : "Audio recorder finished.";
             if (File.Exists(wav))
             {
                 Process.Start(new ProcessStartInfo(wav) { UseShellExecute = true });
@@ -503,7 +844,7 @@ public partial class MainWindow : Window
                 DetectedCount = 1,
                 FirstSeen = seenAt,
                 LastSeen = seenAt,
-                Comment = System.IO.Path.GetFileName(csvPath)
+                Comment = IoPath.GetFileName(csvPath)
             });
         }
 
@@ -555,9 +896,9 @@ public partial class MainWindow : Window
 
         string path = BandsCsvText.Text.Trim();
         if (string.IsNullOrWhiteSpace(path))
-            path = System.IO.Path.Combine(_repoRoot, "configs", "bands.csv");
+            path = IoPath.Combine(_repoRoot, "configs", "bands.csv");
         if (!File.Exists(path))
-            path = System.IO.Path.Combine(_repoRoot, "configs", "bands_v2_default.csv");
+            path = IoPath.Combine(_repoRoot, "configs", "bands_v2_default.csv");
 
         if (!File.Exists(path))
         {
@@ -587,7 +928,7 @@ public partial class MainWindow : Window
                     StopHz = GetLong(values, index, "stop_hz"),
                     StepHz = Math.Max(1, GetLong(values, index, "step_hz")),
                     Mode = Get(values, index, "mode"),
-                    RateHz = GetLong(values, index, "rate_hz"),
+                    RateHz = NormalizeSampleRateHz(GetLong(values, index, "rate_hz")),
                     BandwidthHz = GetLong(values, index, "bw_hz"),
                     SquelchDb = GetDouble(values, index, "squelch_db"),
                     Comment = Get(values, index, "notes")
@@ -612,7 +953,7 @@ public partial class MainWindow : Window
         StartFreqText.Text = band.StartHz.ToString(CultureInfo.InvariantCulture);
         StopFreqText.Text = band.StopHz.ToString(CultureInfo.InvariantCulture);
         StepHzText.Text = band.StepHz.ToString(CultureInfo.InvariantCulture);
-        if (band.RateHz > 0) RateText.Text = band.RateHz.ToString(CultureInfo.InvariantCulture);
+        if (band.RateHz > 0) RateText.Text = NormalizeSampleRateHz(band.RateHz).ToString(CultureInfo.InvariantCulture);
         if (band.BandwidthHz > 0) BwText.Text = band.BandwidthHz.ToString(CultureInfo.InvariantCulture);
         if (!double.IsNaN(band.SquelchDb) && band.SquelchDb != 0) SquelchText.Text = band.SquelchDb.ToString(CultureInfo.InvariantCulture);
     }
@@ -648,8 +989,7 @@ public partial class MainWindow : Window
         double h = Math.Max(1, SpectrumCanvas.ActualHeight);
         DrawGrid(SpectrumCanvas, w, h);
 
-        double minDb = -120;
-        double maxDb = -20;
+        GetDbScale(LastScanPoints.Select(p => p.Dbfs), out double minDb, out double maxDb);
         double minFreq = LastScanPoints.Min(p => (double)p.FrequencyHz);
         double maxFreq = LastScanPoints.Max(p => (double)p.FrequencyHz);
         if (Math.Abs(maxFreq - minFreq) < 1) maxFreq = minFreq + 1;
@@ -667,11 +1007,16 @@ public partial class MainWindow : Window
         }
         SpectrumCanvas.Children.Add(line);
 
-        foreach (var p in LastScanPoints.Where(p => p.Active))
+        // Show active-channel markers for scanner results, but avoid drawing hundreds/thousands
+        // of markers for dense live FFT displays.
+        if (LastScanPoints.Count <= 300)
         {
-            double x = (p.FrequencyHz - minFreq) / (maxFreq - minFreq) * w;
-            var marker = new Line { X1 = x, X2 = x, Y1 = 0, Y2 = h, Stroke = Brushes.Orange, StrokeThickness = 1.5, Opacity = 0.85 };
-            SpectrumCanvas.Children.Add(marker);
+            foreach (var p in LastScanPoints.Where(p => p.Active))
+            {
+                double x = (p.FrequencyHz - minFreq) / (maxFreq - minFreq) * w;
+                var marker = new Line { X1 = x, X2 = x, Y1 = 0, Y2 = h, Stroke = Brushes.Orange, StrokeThickness = 1.5, Opacity = 0.85 };
+                SpectrumCanvas.Children.Add(marker);
+            }
         }
 
         AddCanvasText(SpectrumCanvas, $"{minFreq / 1000000.0:F3} MHz", 6, h - 20);
@@ -688,31 +1033,49 @@ public partial class MainWindow : Window
         }
         WaterfallCaption.Visibility = Visibility.Collapsed;
 
-        double w = Math.Max(1, WaterfallCanvas.ActualWidth);
-        double h = Math.Max(1, WaterfallCanvas.ActualHeight);
-        int rows = WaterfallHistory.Count;
-        double rowHeight = Math.Max(2, h / Math.Max(1, rows));
+        double canvasW = Math.Max(1, WaterfallCanvas.ActualWidth);
+        double canvasH = Math.Max(1, WaterfallCanvas.ActualHeight);
+        int pixelW = Math.Max(1, Math.Min(MaxWaterfallBitmapWidth, (int)Math.Ceiling(canvasW)));
+        int pixelH = Math.Max(1, Math.Min(MaxWaterfallBitmapHeight, (int)Math.Ceiling(canvasH)));
 
-        for (int r = 0; r < rows; r++)
+        GetDbScale(WaterfallHistory.SelectMany(row => row.Select(p => p.Dbfs)), out double minDb, out double maxDb);
+
+        byte[] pixels = new byte[pixelW * pixelH * 4];
+        int rows = WaterfallHistory.Count;
+        for (int y = 0; y < pixelH; y++)
         {
-            var sweep = WaterfallHistory[r].OrderBy(p => p.FrequencyHz).ToList();
+            int rowIndex = Math.Clamp((int)Math.Floor((double)y / pixelH * rows), 0, rows - 1);
+            var sweep = WaterfallHistory[rowIndex].OrderBy(p => p.FrequencyHz).ToList();
             if (sweep.Count == 0) continue;
-            double cellWidth = Math.Max(1, w / sweep.Count);
-            double y = h - ((rows - r) * rowHeight);
-            for (int c = 0; c < sweep.Count; c++)
+
+            for (int x = 0; x < pixelW; x++)
             {
-                var p = sweep[c];
-                var rect = new Rectangle
-                {
-                    Width = Math.Ceiling(cellWidth) + 1,
-                    Height = Math.Ceiling(rowHeight) + 1,
-                    Fill = new SolidColorBrush(DbToWaterfallColor(p.Dbfs))
-                };
-                Canvas.SetLeft(rect, c * cellWidth);
-                Canvas.SetTop(rect, y);
-                WaterfallCanvas.Children.Add(rect);
+                int binIndex = Math.Clamp((int)Math.Floor((double)x / pixelW * sweep.Count), 0, sweep.Count - 1);
+                Color color = DbToWaterfallColor(sweep[binIndex].Dbfs, minDb, maxDb);
+                int offset = ((y * pixelW) + x) * 4;
+                pixels[offset + 0] = color.B;
+                pixels[offset + 1] = color.G;
+                pixels[offset + 2] = color.R;
+                pixels[offset + 3] = 255;
             }
         }
+
+        var bitmap = new WriteableBitmap(pixelW, pixelH, 96, 96, PixelFormats.Pbgra32, null);
+        bitmap.WritePixels(new Int32Rect(0, 0, pixelW, pixelH), pixels, pixelW * 4, 0);
+
+        var image = new Image
+        {
+            Source = bitmap,
+            Width = canvasW,
+            Height = canvasH,
+            Stretch = System.Windows.Media.Stretch.Fill,
+            SnapsToDevicePixels = true
+        };
+        Canvas.SetLeft(image, 0);
+        Canvas.SetTop(image, 0);
+        WaterfallCanvas.Children.Add(image);
+
+        AddCanvasText(WaterfallCanvas, $"{minDb:F1} to {maxDb:F1} dBFS", 6, 6);
     }
 
     private static void DrawGrid(Canvas canvas, double w, double h)
@@ -737,13 +1100,58 @@ public partial class MainWindow : Window
         canvas.Children.Add(tb);
     }
 
-    private static Color DbToWaterfallColor(double db)
+    private static Color DbToWaterfallColor(double db, double minDb, double maxDb)
     {
-        double t = (Clamp(db, -110, -25) + 110) / 85.0;
-        byte r = (byte)(Math.Max(0, t - 0.45) / 0.55 * 255);
+        double span = Math.Max(1.0, maxDb - minDb);
+        double t = (Clamp(db, minDb, maxDb) - minDb) / span;
+
+        // Dark blue/green background, yellow/orange for stronger signals. The scaling is
+        // dynamic per waterfall history so a normal noise floor does not render as solid red.
+        byte r = (byte)(Math.Pow(t, 1.35) * 255);
         byte g = (byte)(Math.Sin(t * Math.PI) * 210);
-        byte b = (byte)((1.0 - t) * 170 + 25);
+        byte b = (byte)((1.0 - t) * 160 + 20);
         return Color.FromRgb(r, g, b);
+    }
+
+    private static void GetDbScale(IEnumerable<double> samples, out double minDb, out double maxDb)
+    {
+        var values = samples
+            .Where(v => !double.IsNaN(v) && !double.IsInfinity(v))
+            .OrderBy(v => v)
+            .ToList();
+
+        if (values.Count == 0)
+        {
+            minDb = -120;
+            maxDb = -40;
+            return;
+        }
+
+        minDb = Percentile(values, 0.05);
+        maxDb = Percentile(values, 0.98);
+
+        if (maxDb - minDb < 12)
+        {
+            double mid = (minDb + maxDb) / 2.0;
+            minDb = mid - 8;
+            maxDb = mid + 8;
+        }
+
+        // Keep extreme one-off values from making the display useless.
+        minDb = Math.Max(-160, minDb);
+        maxDb = Math.Min(40, maxDb);
+    }
+
+    private static double Percentile(IReadOnlyList<double> sortedValues, double percentile)
+    {
+        if (sortedValues.Count == 0) return 0;
+        if (sortedValues.Count == 1) return sortedValues[0];
+        double pos = Math.Clamp(percentile, 0.0, 1.0) * (sortedValues.Count - 1);
+        int lo = (int)Math.Floor(pos);
+        int hi = (int)Math.Ceiling(pos);
+        if (lo == hi) return sortedValues[lo];
+        double frac = pos - lo;
+        return sortedValues[lo] + ((sortedValues[hi] - sortedValues[lo]) * frac);
     }
 
     private void SaveConfigButton_Click(object sender, RoutedEventArgs e)
@@ -761,7 +1169,7 @@ public partial class MainWindow : Window
 
     private void ResetConfigButton_Click(object sender, RoutedEventArgs e)
     {
-        _config = new AppConfig { RepoRoot = _repoRoot, SessionsDir = System.IO.Path.Combine(_repoRoot, "sessions"), BandsCsvPath = System.IO.Path.Combine(_repoRoot, "configs", "bands.csv") };
+        _config = new AppConfig { RepoRoot = _repoRoot, SessionsDir = IoPath.Combine(_repoRoot, "sessions"), BandsCsvPath = IoPath.Combine(_repoRoot, "configs", "bands.csv") };
         ApplyConfigToUi();
         SaveConfig();
         LoadBands();
@@ -776,7 +1184,7 @@ public partial class MainWindow : Window
 
     private void OpenConfigButton_Click(object sender, RoutedEventArgs e)
     {
-        string dir = System.IO.Path.Combine(_repoRoot, "configs");
+        string dir = IoPath.Combine(_repoRoot, "configs");
         Directory.CreateDirectory(dir);
         Process.Start(new ProcessStartInfo(dir) { UseShellExecute = true });
     }
@@ -787,8 +1195,8 @@ public partial class MainWindow : Window
         _config = new AppConfig
         {
             RepoRoot = _repoRoot,
-            SessionsDir = System.IO.Path.Combine(_repoRoot, "sessions"),
-            BandsCsvPath = System.IO.Path.Combine(_repoRoot, "configs", "bands.csv")
+            SessionsDir = IoPath.Combine(_repoRoot, "sessions"),
+            BandsCsvPath = IoPath.Combine(_repoRoot, "configs", "bands.csv")
         };
 
         try
@@ -805,15 +1213,15 @@ public partial class MainWindow : Window
         }
 
         if (string.IsNullOrWhiteSpace(_config.RepoRoot)) _config.RepoRoot = _repoRoot;
-        if (string.IsNullOrWhiteSpace(_config.SessionsDir)) _config.SessionsDir = System.IO.Path.Combine(_repoRoot, "sessions");
-        if (string.IsNullOrWhiteSpace(_config.BandsCsvPath)) _config.BandsCsvPath = System.IO.Path.Combine(_repoRoot, "configs", "bands.csv");
+        if (string.IsNullOrWhiteSpace(_config.SessionsDir)) _config.SessionsDir = IoPath.Combine(_repoRoot, "sessions");
+        if (string.IsNullOrWhiteSpace(_config.BandsCsvPath)) _config.BandsCsvPath = IoPath.Combine(_repoRoot, "configs", "bands.csv");
     }
 
     private void SaveConfig()
     {
         try
         {
-            Directory.CreateDirectory(System.IO.Path.GetDirectoryName(ConfigPath())!);
+            Directory.CreateDirectory(IoPath.GetDirectoryName(ConfigPath())!);
             File.WriteAllText(ConfigPath(), JsonSerializer.Serialize(_config, new JsonSerializerOptions { WriteIndented = true }));
             Log($"Config saved: {ConfigPath()}");
         }
@@ -835,30 +1243,61 @@ public partial class MainWindow : Window
         DefaultChirpModeText.Text = _config.DefaultChirpMode;
         RepeatScanCheck.IsChecked = _config.RepeatScan;
         RepeatDelayText.Text = _config.RepeatDelaySeconds.ToString(CultureInfo.InvariantCulture);
+        LiveCenterFreqText.Text = _config.LiveCenterHz.ToString(CultureInfo.InvariantCulture);
+        LiveFftText.Text = _config.LiveFftSize.ToString(CultureInfo.InvariantCulture);
+        LiveAvgText.Text = _config.LiveAverages.ToString(CultureInfo.InvariantCulture);
+        LiveIntervalText.Text = _config.LiveIntervalMs.ToString(CultureInfo.InvariantCulture);
+        LiveGainDbText.Text = _config.LiveGainDb;
         SelectComboValue(RxModeCombo, _config.RxMode);
         SelectComboValue(RxCombineCombo, _config.RxCombine);
+        SelectComboValue(LiveGainModeCombo, _config.LiveGainMode);
     }
 
     private void SaveUiToConfig()
     {
         _config.Uri = UriText.Text.Trim();
-        _config.RateHz = ParseLongOrDefault(RateText.Text, 960000);
+        _config.RateHz = GetSafeRateHzFromUi();
         _config.BandwidthHz = ParseLongOrDefault(BwText.Text, 1000000);
         _config.SquelchDb = ParseDoubleOrDefault(SquelchText.Text, -65);
         _config.RxMode = ComboText(RxModeCombo);
         _config.RxCombine = ComboText(RxCombineCombo);
         _config.RepoRoot = _repoRoot;
-        _config.SessionsDir = string.IsNullOrWhiteSpace(SessionsDirText.Text) ? System.IO.Path.Combine(_repoRoot, "sessions") : ExpandPath(SessionsDirText.Text.Trim());
-        _config.BandsCsvPath = string.IsNullOrWhiteSpace(BandsCsvText.Text) ? System.IO.Path.Combine(_repoRoot, "configs", "bands.csv") : ExpandPath(BandsCsvText.Text.Trim());
+        _config.SessionsDir = string.IsNullOrWhiteSpace(SessionsDirText.Text) ? IoPath.Combine(_repoRoot, "sessions") : ExpandPath(SessionsDirText.Text.Trim());
+        _config.BandsCsvPath = string.IsNullOrWhiteSpace(BandsCsvText.Text) ? IoPath.Combine(_repoRoot, "configs", "bands.csv") : ExpandPath(BandsCsvText.Text.Trim());
         _config.ListenSeconds = (int)Math.Clamp(ParseLongOrDefault(ListenSecondsText.Text, 30), 1, 3600);
         _config.DefaultChirpMode = string.IsNullOrWhiteSpace(DefaultChirpModeText.Text) ? "NFM" : DefaultChirpModeText.Text.Trim();
         _config.RepeatScan = RepeatScanCheck.IsChecked == true;
         _config.RepeatDelaySeconds = (int)Math.Clamp(ParseLongOrDefault(RepeatDelayText.Text, 2), 0, 3600);
+        _config.LiveCenterHz = ParseLongOrDefault(LiveCenterFreqText.Text, 162550000);
+        _config.LiveFftSize = (int)Math.Clamp(ParseLongOrDefault(LiveFftText.Text, 512), 256, 65536);
+        _config.LiveAverages = (int)Math.Clamp(ParseLongOrDefault(LiveAvgText.Text, 2), 1, 1000);
+        _config.LiveIntervalMs = (int)Math.Clamp(ParseLongOrDefault(LiveIntervalText.Text, 500), 0, 60000);
+        _config.LiveGainMode = ComboText(LiveGainModeCombo);
+        _config.LiveGainDb = LiveGainDbText.Text.Trim();
+    }
+
+    private long GetSafeRateHzFromUi()
+    {
+        long requested = ParseLongOrDefault(RateText.Text, DefaultSampleRateHz);
+        long safe = NormalizeSampleRateHz(requested);
+        if (safe != requested)
+        {
+            RateText.Text = safe.ToString(CultureInfo.InvariantCulture);
+            Log($"Sample rate {requested} Hz is not used because prior Pluto testing showed it can fail with ret=-22. Using {safe} Hz.");
+        }
+        return safe;
+    }
+
+    private static long NormalizeSampleRateHz(long rateHz)
+    {
+        if (rateHz == KnownInvalidSampleRateHz || rateHz <= 0)
+            return DefaultSampleRateHz;
+        return rateHz;
     }
 
     private string ExpandPath(string path)
     {
-        return System.IO.Path.IsPathRooted(path) ? path : System.IO.Path.GetFullPath(System.IO.Path.Combine(_repoRoot, path));
+        return IoPath.IsPathRooted(path) ? path : IoPath.GetFullPath(IoPath.Combine(_repoRoot, path));
     }
 
     private void EnsureSessionsDir()
@@ -867,17 +1306,17 @@ public partial class MainWindow : Window
         Directory.CreateDirectory(_config.SessionsDir);
     }
 
-    private string ConfigPath() => System.IO.Path.Combine(_repoRoot, "configs", "gui_v2_settings.json");
+    private string ConfigPath() => IoPath.Combine(_repoRoot, "configs", "gui_v2_settings.json");
 
     private string FindTool(string exeName)
     {
         var candidates = new[]
         {
-            System.IO.Path.Combine(_repoRoot, "build", "native", exeName),
-            System.IO.Path.Combine(_repoRoot, "bin", exeName),
-            System.IO.Path.Combine(_repoRoot, "bin", "native", exeName),
-            System.IO.Path.Combine(AppContext.BaseDirectory, exeName),
-            System.IO.Path.Combine(AppContext.BaseDirectory, "bin", exeName),
+            IoPath.Combine(_repoRoot, "build", "native", exeName),
+            IoPath.Combine(_repoRoot, "bin", exeName),
+            IoPath.Combine(_repoRoot, "bin", "native", exeName),
+            IoPath.Combine(AppContext.BaseDirectory, exeName),
+            IoPath.Combine(AppContext.BaseDirectory, "bin", exeName),
         };
         return candidates.FirstOrDefault(File.Exists) ?? string.Empty;
     }
@@ -890,11 +1329,11 @@ public partial class MainWindow : Window
             var dir = new DirectoryInfo(start);
             for (int i = 0; dir != null && i < 10; i++, dir = dir.Parent)
             {
-                if (File.Exists(System.IO.Path.Combine(dir.FullName, ".pluto_windows_scanner_root")))
+                if (File.Exists(IoPath.Combine(dir.FullName, ".pluto_windows_scanner_root")))
                     return dir.FullName;
 
-                bool looksLikeRepo = Directory.Exists(System.IO.Path.Combine(dir.FullName, "configs")) &&
-                                     (Directory.Exists(System.IO.Path.Combine(dir.FullName, "build")) || Directory.Exists(System.IO.Path.Combine(dir.FullName, "bin")) || Directory.Exists(System.IO.Path.Combine(dir.FullName, "launchers")));
+                bool looksLikeRepo = Directory.Exists(IoPath.Combine(dir.FullName, "configs")) &&
+                                     (Directory.Exists(IoPath.Combine(dir.FullName, "build")) || Directory.Exists(IoPath.Combine(dir.FullName, "bin")) || Directory.Exists(IoPath.Combine(dir.FullName, "launchers")));
                 if (looksLikeRepo) return dir.FullName;
             }
         }
@@ -1032,7 +1471,7 @@ public sealed class AppConfig
 {
     public string RepoRoot { get; set; } = string.Empty;
     public string Uri { get; set; } = "ip:192.168.2.1";
-    public long RateHz { get; set; } = 960000;
+    public long RateHz { get; set; } = 1000000;
     public long BandwidthHz { get; set; } = 1000000;
     public double SquelchDb { get; set; } = -65;
     public string RxMode { get; set; } = "auto";
@@ -1043,6 +1482,12 @@ public sealed class AppConfig
     public string DefaultChirpMode { get; set; } = "NFM";
     public bool RepeatScan { get; set; } = false;
     public int RepeatDelaySeconds { get; set; } = 2;
+    public long LiveCenterHz { get; set; } = 162550000;
+    public int LiveFftSize { get; set; } = 512;
+    public int LiveAverages { get; set; } = 2;
+    public int LiveIntervalMs { get; set; } = 500;
+    public string LiveGainMode { get; set; } = "slow_attack";
+    public string LiveGainDb { get; set; } = string.Empty;
 }
 
 public sealed class BandDefinition
@@ -1053,7 +1498,7 @@ public sealed class BandDefinition
     public long StopHz { get; set; }
     public long StepHz { get; set; } = 25000;
     public string Mode { get; set; } = "nfm";
-    public long RateHz { get; set; } = 960000;
+    public long RateHz { get; set; } = 1000000;
     public long BandwidthHz { get; set; } = 1000000;
     public double SquelchDb { get; set; } = -65;
     public string Comment { get; set; } = string.Empty;
