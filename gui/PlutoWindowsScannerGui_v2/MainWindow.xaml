@@ -1,0 +1,223 @@
+<Window x:Class="PlutoWindowsScannerGui.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Windows Pluto SDR Scanner v2.0" Height="860" Width="1260" MinHeight="720" MinWidth="1040"
+        Background="#0f172a" Foreground="#e5e7eb">
+    <Window.Resources>
+        <SolidColorBrush x:Key="PanelBrush" Color="#111827" />
+        <SolidColorBrush x:Key="BorderBrush" Color="#334155" />
+        <SolidColorBrush x:Key="InputBrush" Color="#1f2937" />
+        <SolidColorBrush x:Key="TextBrush" Color="#e5e7eb" />
+        <SolidColorBrush x:Key="MutedTextBrush" Color="#94a3b8" />
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        </Style>
+        <Style TargetType="Label">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="{StaticResource InputBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="Background" Value="{StaticResource InputBrush}" />
+            <Setter Property="Foreground" Value="#111827" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#2563eb" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#1d4ed8" />
+        </Style>
+        <Style TargetType="GroupBox">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="Margin" Value="6" />
+            <Setter Property="Padding" Value="8" />
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <DockPanel Grid.Row="0" Margin="4,0,4,8">
+            <StackPanel Orientation="Vertical" DockPanel.Dock="Left">
+                <TextBlock Text="Windows Pluto SDR Scanner v2.0" FontSize="24" FontWeight="SemiBold" />
+                <TextBlock Text="HF/VHF/UHF scanner GUI front-end for the existing Pluto+ MSYS2 Windows tools" Foreground="{StaticResource MutedTextBrush}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right">
+                <Button x:Name="OpenSessionsButton" Content="Open Sessions" Click="OpenSessionsButton_Click" />
+                <Button x:Name="OpenConfigButton" Content="Open Config Folder" Click="OpenConfigButton_Click" />
+            </StackPanel>
+        </DockPanel>
+
+        <TabControl Grid.Row="1" x:Name="MainTabs" Background="#0f172a" Foreground="#111827">
+            <TabItem Header="Scanner">
+                <Grid Margin="4">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="2.1*" />
+                        <RowDefinition Height="2.2*" />
+                        <RowDefinition Height="1.2*" />
+                    </Grid.RowDefinitions>
+
+                    <GroupBox Grid.Row="0" Header="Scan Controls" Background="{StaticResource PanelBrush}">
+                        <StackPanel>
+                            <WrapPanel VerticalAlignment="Center">
+                                <Label Content="Mode" />
+                                <ComboBox x:Name="ScanModeCombo" SelectionChanged="ScanModeCombo_SelectionChanged">
+                                    <ComboBoxItem Content="Standard Band" IsSelected="True" />
+                                    <ComboBoxItem Content="Frequency Range" />
+                                    <ComboBoxItem Content="Single Frequency" />
+                                </ComboBox>
+                                <Label Content="Band" />
+                                <ComboBox x:Name="BandCombo" DisplayMemberPath="Name" SelectionChanged="BandCombo_SelectionChanged" MinWidth="260" />
+                                <Label Content="Single Hz" />
+                                <TextBox x:Name="SingleFreqText" Text="162550000" />
+                                <Label Content="Start Hz" />
+                                <TextBox x:Name="StartFreqText" Text="162400000" />
+                                <Label Content="Stop Hz" />
+                                <TextBox x:Name="StopFreqText" Text="162550000" />
+                                <Label Content="Step Hz" />
+                                <TextBox x:Name="StepHzText" Text="25000" />
+                            </WrapPanel>
+                            <WrapPanel VerticalAlignment="Center">
+                                <Label Content="URI" />
+                                <TextBox x:Name="UriText" Text="ip:192.168.2.1" MinWidth="145" />
+                                <Label Content="Rate" />
+                                <TextBox x:Name="RateText" Text="960000" />
+                                <Label Content="RF BW" />
+                                <TextBox x:Name="BwText" Text="1000000" />
+                                <Label Content="RX Mode" />
+                                <ComboBox x:Name="RxModeCombo">
+                                    <ComboBoxItem Content="auto" IsSelected="True" />
+                                    <ComboBoxItem Content="single" />
+                                    <ComboBoxItem Content="dual" />
+                                </ComboBox>
+                                <Label Content="RX Combine" />
+                                <ComboBox x:Name="RxCombineCombo">
+                                    <ComboBoxItem Content="max" IsSelected="True" />
+                                    <ComboBoxItem Content="average" />
+                                    <ComboBoxItem Content="separate" />
+                                </ComboBox>
+                                <Label Content="Squelch / Threshold dBFS" />
+                                <TextBox x:Name="SquelchText" Text="-65" />
+                                <CheckBox x:Name="VerboseCheck" Content="Verbose" Margin="12,6" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}" />
+                            </WrapPanel>
+                            <WrapPanel VerticalAlignment="Center">
+                                <Button x:Name="StartScanButton" Content="Start Scan" Click="StartScanButton_Click" FontWeight="SemiBold" />
+                                <Button x:Name="StopScanButton" Content="Stop" Click="StopScanButton_Click" IsEnabled="False" />
+                                <CheckBox x:Name="RepeatScanCheck" Content="Repeat" Margin="12,6" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}" />
+                                <Label Content="Delay sec" />
+                                <TextBox x:Name="RepeatDelayText" Text="2" Width="52" />
+                                <Button x:Name="ClearActiveButton" Content="Clear List" Click="ClearActiveButton_Click" />
+                                <Button x:Name="ListenButton" Content="Listen / Record Selected" Click="ListenButton_Click" />
+                                <Button x:Name="ExportChirpButton" Content="Export CHIRP CSV" Click="ExportChirpButton_Click" />
+                                <Button x:Name="OpenLastCsvButton" Content="Open Last CSV" Click="OpenLastCsvButton_Click" />
+                                <TextBlock x:Name="StatusText" Text="Ready" Margin="16,8" Foreground="{StaticResource MutedTextBrush}" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <Grid Grid.Row="1" Margin="6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.45*" />
+                            <ColumnDefinition Width="1*" />
+                        </Grid.ColumnDefinitions>
+                        <GroupBox Grid.Column="0" Header="Frequency Spectrum" Background="{StaticResource PanelBrush}">
+                            <Grid>
+                                <Canvas x:Name="SpectrumCanvas" Background="#020617" SizeChanged="ChartCanvas_SizeChanged" ClipToBounds="True" />
+                                <TextBlock x:Name="SpectrumCaption" Text="Run a scan to populate the spectrum chart" Foreground="#94a3b8" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Grid>
+                        </GroupBox>
+                        <GroupBox Grid.Column="1" Header="Waterfall History" Background="{StaticResource PanelBrush}">
+                            <Grid>
+                                <Canvas x:Name="WaterfallCanvas" Background="#020617" SizeChanged="ChartCanvas_SizeChanged" ClipToBounds="True" />
+                                <TextBlock x:Name="WaterfallCaption" Text="Waterfall rows update after each completed scan" Foreground="#94a3b8" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Grid>
+                        </GroupBox>
+                    </Grid>
+
+                    <GroupBox Grid.Row="2" Header="Detected Active Channels" Background="{StaticResource PanelBrush}">
+                        <DataGrid x:Name="ActiveChannelsGrid" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
+                                  Background="#020617" Foreground="#e5e7eb" RowBackground="#111827" AlternatingRowBackground="#0f172a"
+                                  GridLinesVisibility="Horizontal" BorderBrush="{StaticResource BorderBrush}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Freq MHz" Binding="{Binding FrequencyMhz}" Width="110" />
+                                <DataGridTextColumn Header="Label" Binding="{Binding Label}" Width="2*" />
+                                <DataGridTextColumn Header="Mode" Binding="{Binding Mode}" Width="80" />
+                                <DataGridTextColumn Header="RX" Binding="{Binding EffectiveRxMode}" Width="80" />
+                                <DataGridTextColumn Header="RX1 dBFS" Binding="{Binding Rx1Dbfs}" Width="90" />
+                                <DataGridTextColumn Header="RX2 dBFS" Binding="{Binding Rx2Dbfs}" Width="90" />
+                                <DataGridTextColumn Header="Last dBFS" Binding="{Binding LastDbfs}" Width="90" />
+                                <DataGridTextColumn Header="Peak dBFS" Binding="{Binding PeakDbfs}" Width="90" />
+                                <DataGridTextColumn Header="Threshold" Binding="{Binding ThresholdDbfs}" Width="90" />
+                                <DataGridTextColumn Header="Hits" Binding="{Binding DetectedCount}" Width="70" />
+                                <DataGridTextColumn Header="Last Seen" Binding="{Binding LastSeenDisplay}" Width="95" />
+                                <DataGridTextColumn Header="Comment" Binding="{Binding Comment}" Width="2*" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </GroupBox>
+
+                    <GroupBox Grid.Row="3" Header="Run Log" Background="{StaticResource PanelBrush}">
+                        <TextBox x:Name="LogText" Background="#020617" Foreground="#d1d5db" BorderBrush="{StaticResource BorderBrush}"
+                                 FontFamily="Consolas" FontSize="12" TextWrapping="NoWrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" />
+                    </GroupBox>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Configuration">
+                <ScrollViewer Margin="8">
+                    <StackPanel>
+                        <GroupBox Header="Application Paths and Defaults" Background="{StaticResource PanelBrush}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="220" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Label Grid.Row="0" Grid.Column="0" Content="Project root" />
+                                <TextBox Grid.Row="0" Grid.Column="1" x:Name="RepoRootText" IsReadOnly="True" />
+                                <Label Grid.Row="1" Grid.Column="0" Content="Sessions folder" />
+                                <TextBox Grid.Row="1" Grid.Column="1" x:Name="SessionsDirText" />
+                                <Label Grid.Row="2" Grid.Column="0" Content="Bands CSV path" />
+                                <TextBox Grid.Row="2" Grid.Column="1" x:Name="BandsCsvText" />
+                                <Label Grid.Row="3" Grid.Column="0" Content="Default listen seconds" />
+                                <TextBox Grid.Row="3" Grid.Column="1" x:Name="ListenSecondsText" Text="30" />
+                                <Label Grid.Row="4" Grid.Column="0" Content="Default CHIRP mode" />
+                                <TextBox Grid.Row="4" Grid.Column="1" x:Name="DefaultChirpModeText" Text="NFM" />
+                                <TextBlock Grid.Row="5" Grid.ColumnSpan="2" Margin="6,10" Foreground="{StaticResource MutedTextBrush}"
+                                           TextWrapping="Wrap"
+                                           Text="The GUI reads standard band choices from configs\bands.csv. If you edit that CSV, restart the GUI or click Reload Bands." />
+                            </Grid>
+                        </GroupBox>
+
+                        <GroupBox Header="v2.0 Development Notes" Background="{StaticResource PanelBrush}">
+                            <TextBlock TextWrapping="Wrap" Foreground="{StaticResource TextBrush}"><Run Text="This v2.0 phase adds a repeat-scan loop and accumulates active channels across passes. Spectrum and waterfall views are still populated from completed scan result levels. The next native integration step is a real-time spectrum/waterfall stream from pluto_spectrum_stream or a dedicated streaming backend." /></TextBlock>
+                        </GroupBox>
+
+                        <WrapPanel>
+                            <Button x:Name="SaveConfigButton" Content="Save Configuration" Click="SaveConfigButton_Click" />
+                            <Button x:Name="ReloadBandsButton" Content="Reload Bands" Click="ReloadBandsButton_Click" />
+                            <Button x:Name="ResetConfigButton" Content="Reset Defaults" Click="ResetConfigButton_Click" />
+                        </WrapPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+
+        <TextBlock Grid.Row="2" x:Name="FooterText" Text="v2.0 GUI starter — Windows host mode" Foreground="#94a3b8" Margin="6,8,6,0" />
+    </Grid>
+</Window>

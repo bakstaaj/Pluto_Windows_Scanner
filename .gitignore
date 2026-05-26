@@ -1,0 +1,21 @@
+# Runtime/test output
+/sessions/
+*.csv
+*.wav
+*.html
+
+# Build output
+**/bin/
+**/obj/
+!bin/
+!bin/*.exe
+!bin/*.dll
+
+# Generated release packages
+/releases/*.zip
+/releases/*/
+
+# Local scratch/backup files
+*.bak
+*.bak_*
+*.tmp

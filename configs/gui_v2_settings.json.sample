@@ -1,0 +1,15 @@
+{
+  "RepoRoot": "",
+  "Uri": "ip:192.168.2.1",
+  "RateHz": 960000,
+  "BandwidthHz": 1000000,
+  "SquelchDb": -65,
+  "RxMode": "auto",
+  "RxCombine": "max",
+  "SessionsDir": "sessions",
+  "BandsCsvPath": "configs/bands.csv",
+  "ListenSeconds": 30,
+  "DefaultChirpMode": "NFM",
+  "RepeatScan": false,
+  "RepeatDelaySeconds": 2
+}
