@@ -13,6 +13,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Threading;
 using System.Windows.Input;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -47,6 +48,16 @@ public partial class MainWindow : Window
     private AppConfig _config = new();
     private string _repoRoot = string.Empty;
     private string _lastScanCsv = string.Empty;
+    private DispatcherTimer? _scanEstimatedProgressTimer;
+    private DateTime _scanEstimatedStartUtc;
+    private double _scanEstimatedTotalSeconds;
+
+    private DispatcherTimer? _scanCsvProgressTimer;
+    private string _scanProgressCsvPath = string.Empty;
+
+    private int _scanProgressCurrent;
+    private int _scanProgressTotal;
+
     private const int MaxWaterfallRows = 60;
     private const int LiveRenderIntervalMs = 250;
     private const int MaxWaterfallBitmapWidth = 900;
@@ -246,8 +257,334 @@ public partial class MainWindow : Window
         }
     }
 
+
+    private int EstimateScanProgressTotal()
+    {
+        string mode = ComboText(ScanModeCombo);
+
+        try
+        {
+            if (mode.Equals("Single Frequency", StringComparison.OrdinalIgnoreCase))
+            {
+                return 1;
+            }
+
+            long start;
+            long stop;
+            long step;
+
+            if (mode.Equals("Frequency Range", StringComparison.OrdinalIgnoreCase))
+            {
+                start = ParseLong(StartFreqText.Text, "start Hz");
+                stop = ParseLong(StopFreqText.Text, "stop Hz");
+                step = ParseLong(StepHzText.Text, "step Hz");
+            }
+            else if (BandCombo.SelectedItem is BandDefinition band)
+            {
+                start = band.StartHz;
+                stop = band.StopHz;
+                step = band.StepHz;
+            }
+            else
+            {
+                return 1;
+            }
+
+            if (step <= 0 || stop < start)
+            {
+                return 1;
+            }
+
+            long count = ((stop - start) / step) + 1;
+            return (int)Math.Clamp(count, 1, 100000);
+        }
+        catch
+        {
+            return 1;
+        }
+    }
+
+    private void ResetScanProgress(int total)
+    {
+        _scanProgressCurrent = 0;
+        _scanProgressTotal = Math.Max(1, total);
+
+        ScanProgressBar.Minimum = 0;
+        ScanProgressBar.Maximum = _scanProgressTotal;
+        ScanProgressBar.Value = 0;
+        ScanProgressText.Text = $"Scan starting: 0 / {_scanProgressTotal}";
+    }
+
+    private void UpdateScanProgressFromOutput(string line)
+    {
+        if (!LooksLikeScanFrequencyLine(line, out long frequencyHz))
+        {
+            return;
+        }
+
+        _scanProgressCurrent = Math.Min(_scanProgressCurrent + 1, Math.Max(1, _scanProgressTotal));
+
+        double mhz = frequencyHz / 1000000.0;
+        ScanProgressBar.Value = _scanProgressCurrent;
+        ScanProgressText.Text = $"Scanning {mhz:F6} MHz  ({_scanProgressCurrent} / {_scanProgressTotal})";
+    }
+
+    private static bool LooksLikeScanFrequencyLine(string line, out long frequencyHz)
+    {
+        frequencyHz = 0;
+
+        if (string.IsNullOrWhiteSpace(line))
+        {
+            return false;
+        }
+
+        line = line.TrimStart();
+
+        int space = line.IndexOf(' ');
+        if (space <= 0)
+        {
+            return false;
+        }
+
+        string first = line[..space];
+        if (!long.TryParse(first, NumberStyles.Integer, CultureInfo.InvariantCulture, out frequencyHz))
+        {
+            return false;
+        }
+
+        return frequencyHz > 1000000 && line.Contains("Hz", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void CompleteScanProgress(bool ok)
+    {
+        if (_scanProgressTotal <= 0)
+        {
+            _scanProgressTotal = 1;
+        }
+
+        if (ok)
+        {
+            ScanProgressBar.Value = ScanProgressBar.Maximum;
+            ScanProgressText.Text = $"Scan complete: {_scanProgressCurrent} / {_scanProgressTotal}";
+        }
+        else
+        {
+            ScanProgressText.Text = $"Scan stopped: {_scanProgressCurrent} / {_scanProgressTotal}";
+        }
+    }
+
+
+    private void StartScanCsvProgressMonitor(string csvPath, int total)
+    {
+        StopScanCsvProgressMonitor(false);
+
+        _scanProgressCsvPath = csvPath;
+        ResetScanProgress(total);
+
+        _scanCsvProgressTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(250)
+        };
+
+        _scanCsvProgressTimer.Tick += (_, _) => UpdateScanProgressFromCsv();
+        _scanCsvProgressTimer.Start();
+    }
+
+    private void UpdateScanProgressFromCsv()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(_scanProgressCsvPath) || !File.Exists(_scanProgressCsvPath))
+            {
+                return;
+            }
+
+            var dataLines = File.ReadLines(_scanProgressCsvPath)
+                .Skip(1)
+                .Where(line => !string.IsNullOrWhiteSpace(line) && !line.TrimStart().StartsWith("#", StringComparison.Ordinal))
+                .ToList();
+
+            int current = Math.Min(dataLines.Count, Math.Max(1, _scanProgressTotal));
+            if (current <= _scanProgressCurrent)
+            {
+                return;
+            }
+
+            _scanProgressCurrent = current;
+            ScanProgressBar.Value = _scanProgressCurrent;
+
+            string lastLine = dataLines.LastOrDefault() ?? string.Empty;
+            long frequencyHz = 0;
+
+            try
+            {
+                var values = SplitCsv(lastLine);
+                if (values.Length > 0)
+                {
+                    long.TryParse(values[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out frequencyHz);
+                }
+            }
+            catch
+            {
+                frequencyHz = 0;
+            }
+
+            if (frequencyHz > 0)
+            {
+                double mhz = frequencyHz / 1000000.0;
+                ScanProgressText.Text = $"Scanning {mhz:F6} MHz  ({_scanProgressCurrent} / {_scanProgressTotal})";
+            }
+            else
+            {
+                ScanProgressText.Text = $"Scanning... {_scanProgressCurrent} / {_scanProgressTotal}";
+            }
+
+            }
+        catch
+        {
+            // Best-effort progress only.
+        }
+    }
+
+    private void StopScanCsvProgressMonitor(bool ok)
+    {
+        try
+        {
+            _scanCsvProgressTimer?.Stop();
+            _scanCsvProgressTimer = null;
+
+            if (!string.IsNullOrWhiteSpace(_scanProgressCsvPath))
+            {
+                UpdateScanProgressFromCsv();
+            }
+
+            CompleteScanProgress(ok);
+        }
+        catch
+        {
+            // Best-effort progress only.
+        }
+    }
+
+
+    private void StartEstimatedScanProgress(int total)
+    {
+        StopEstimatedScanProgress(false, false);
+
+        _scanProgressCurrent = 0;
+        _scanProgressTotal = Math.Max(1, total);
+        _scanEstimatedStartUtc = DateTime.UtcNow;
+        _scanEstimatedTotalSeconds = EstimateScanDurationSeconds(_scanProgressTotal);
+
+        ScanProgressBar.IsIndeterminate = false;
+        ScanProgressBar.Minimum = 0;
+        ScanProgressBar.Maximum = _scanProgressTotal;
+        ScanProgressBar.Value = 0;
+        ScanProgressText.Text = $"Scan starting: 0 / {_scanProgressTotal}";
+
+        _scanEstimatedProgressTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(250)
+        };
+
+        _scanEstimatedProgressTimer.Tick += (_, _) => UpdateEstimatedScanProgress();
+        _scanEstimatedProgressTimer.Start();
+    }
+
+    private double EstimateScanDurationSeconds(int total)
+    {
+        double rateHz = Math.Max(1.0, GetSafeRateHzFromUi());
+        double samples = Math.Max(1024.0, _config.ScannerSamples);
+        double settleMs = Math.Max(0.0, _config.ScannerSettleMs);
+
+        // Capture time + requested settle + a small USB/IIO/tune overhead estimate.
+        double overheadMs = Math.Max(0.0, _config.ScannerProgressOverheadMs);
+        double perFrequencySeconds = (samples / rateHz) + (settleMs / 1000.0) + (overheadMs / 1000.0);
+
+        // Give very short scans enough time to display movement.
+        return Math.Max(0.5, total * perFrequencySeconds);
+    }
+
+    private void UpdateEstimatedScanProgress()
+    {
+        if (_scanProgressTotal <= 0 || _scanEstimatedTotalSeconds <= 0.0)
+        {
+            return;
+        }
+
+        double elapsed = Math.Max(0.0, (DateTime.UtcNow - _scanEstimatedStartUtc).TotalSeconds);
+        double rawFraction = elapsed / _scanEstimatedTotalSeconds;
+
+        // Do not sit frozen at 98% during long backend cleanup/tail time.
+        // Once the estimate is exhausted, show an indeterminate "finalizing" state
+        // until the process exits and StopEstimatedScanProgress(true) snaps to 100%.
+        if (rawFraction >= 1.0)
+        {
+            _scanProgressCurrent = Math.Max(_scanProgressCurrent, Math.Max(0, _scanProgressTotal - 1));
+            ScanProgressBar.IsIndeterminate = true;
+            ScanProgressText.Text = $"Finalizing scan... {_scanProgressCurrent} / {_scanProgressTotal}";
+            return;
+        }
+
+        double fraction = Math.Clamp(rawFraction, 0.0, 0.995);
+
+        int estimated = (int)Math.Floor(fraction * _scanProgressTotal);
+        estimated = Math.Clamp(estimated, 0, Math.Max(0, _scanProgressTotal - 1));
+
+        if (estimated < _scanProgressCurrent)
+        {
+            return;
+        }
+
+        _scanProgressCurrent = estimated;
+        ScanProgressBar.IsIndeterminate = false;
+        ScanProgressBar.Value = _scanProgressCurrent;
+
+        ScanProgressText.Text = $"Scanning... {_scanProgressCurrent} / {_scanProgressTotal}";
+    }
+
+    private void StopEstimatedScanProgress(bool ok, bool updateText = true)
+    {
+        try
+        {
+            _scanEstimatedProgressTimer?.Stop();
+            _scanEstimatedProgressTimer = null;
+
+            if (!updateText)
+            {
+                return;
+            }
+
+            ScanProgressBar.IsIndeterminate = false;
+
+            if (ok)
+            {
+                _scanProgressCurrent = Math.Max(_scanProgressCurrent, _scanProgressTotal);
+                ScanProgressBar.Value = ScanProgressBar.Maximum;
+                ScanProgressText.Text = $"Scan complete: {_scanProgressTotal} / {_scanProgressTotal}";
+            }
+            else
+            {
+                ScanProgressBar.IsIndeterminate = false;
+                ScanProgressText.Text = $"Scan stopped: {_scanProgressCurrent} / {_scanProgressTotal}";
+            }
+
+            }
+        catch
+        {
+            // Best-effort progress only.
+        }
+    }
+
     private async Task<bool> RunOneScanAsync(string scannerExe, string args, string csvPath, CancellationToken token)
     {
+        if (!args.Contains("--verbose", StringComparison.OrdinalIgnoreCase))
+        {
+            args += " --verbose";
+        }
+
+        StartEstimatedScanProgress(EstimateScanProgressTotal());
+
         StatusText.Text = $"Scanning pass {_scanNumber}...";
         Log($"Starting scan pass {_scanNumber}:");
         Log($"  {scannerExe}");
@@ -279,11 +616,16 @@ public partial class MainWindow : Window
             {
                 ParseScanCsv(csvPath);
                 StatusText.Text = $"Scan pass {_scanNumber} complete. Active channels: {ActiveChannels.Count}.";
-                return exitCode == 0;
+                bool ok = exitCode == 0;
+                StopEstimatedScanProgress(ok);
+                return ok;
             }
 
             StatusText.Text = "Scan finished, but no CSV output was found.";
             Log($"No CSV found at {csvPath}");
+            CompleteScanProgress(false);
+            StopScanCsvProgressMonitor(false);
+            StopEstimatedScanProgress(false);
             return false;
         }
         catch (OperationCanceledException)
@@ -343,6 +685,13 @@ public partial class MainWindow : Window
             args.Add("--stop"); args.Add(band.StopHz.ToString(CultureInfo.InvariantCulture));
             args.Add("--step"); args.Add(band.StepHz.ToString(CultureInfo.InvariantCulture));
         }
+
+        args.Add("--channel-lowpass-hz");
+        args.Add(_config.ScannerChannelLowpassHz.ToString("0.###", CultureInfo.InvariantCulture));
+        args.Add("--samples");
+        args.Add(_config.ScannerSamples.ToString(CultureInfo.InvariantCulture));
+        args.Add("--settle-ms");
+        args.Add(_config.ScannerSettleMs.ToString(CultureInfo.InvariantCulture));
 
         if (VerboseCheck.IsChecked == true)
             args.Add("--verbose");
@@ -993,7 +1342,7 @@ public partial class MainWindow : Window
             _listenProcess = proc;
             ListenButton.IsEnabled = false;
 
-            proc.OutputDataReceived += (_, ev) => { if (!string.IsNullOrWhiteSpace(ev.Data)) Dispatcher.Invoke(() => Log(ev.Data)); };
+            proc.OutputDataReceived += (_, ev) => { if (!string.IsNullOrWhiteSpace(ev.Data)) Dispatcher.Invoke(() => { Log(ev.Data); UpdateScanProgressFromOutput(ev.Data); }); };
             proc.ErrorDataReceived += (_, ev) => { if (!string.IsNullOrWhiteSpace(ev.Data)) Dispatcher.Invoke(() => Log("ERR: " + ev.Data)); };
             proc.Start();
             proc.BeginOutputReadLine();
@@ -1681,6 +2030,10 @@ public partial class MainWindow : Window
         BandsCsvText.Text = _config.BandsCsvPath;
         ListenSecondsText.Text = _config.ListenSeconds.ToString(CultureInfo.InvariantCulture);
         ActiveChannelMinSnrDbText.Text = _config.ActiveChannelMinSnrDb.ToString("0.###", CultureInfo.InvariantCulture);
+        ScannerChannelLowpassHzText.Text = _config.ScannerChannelLowpassHz.ToString("0.###", CultureInfo.InvariantCulture);
+        ScannerSamplesText.Text = _config.ScannerSamples.ToString(CultureInfo.InvariantCulture);
+        ScannerSettleMsText.Text = _config.ScannerSettleMs.ToString(CultureInfo.InvariantCulture);
+        ScannerProgressOverheadMsText.Text = _config.ScannerProgressOverheadMs.ToString(CultureInfo.InvariantCulture);
         DefaultChirpModeText.Text = _config.DefaultChirpMode;
         RepeatScanCheck.IsChecked = _config.RepeatScan;
         RepeatDelayText.Text = _config.RepeatDelaySeconds.ToString(CultureInfo.InvariantCulture);
@@ -1714,6 +2067,18 @@ public partial class MainWindow : Window
         {
             _config.ActiveChannelMinSnrDb = DefaultActiveChannelMinSnrDb;
         }
+        if (double.TryParse(ScannerChannelLowpassHzText.Text.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out double scanChannelLpHz))
+        {
+            _config.ScannerChannelLowpassHz = Math.Clamp(scanChannelLpHz, 0.0, 500000.0);
+        }
+        else
+        {
+            _config.ScannerChannelLowpassHz = 12000.0;
+        }
+
+        _config.ScannerSamples = (int)Math.Clamp(ParseLongOrDefault(ScannerSamplesText.Text, 8192), 1024, 262144);
+        _config.ScannerSettleMs = (int)Math.Clamp(ParseLongOrDefault(ScannerSettleMsText.Text, 50), 0, 2000);
+        _config.ScannerProgressOverheadMs = (int)Math.Clamp(ParseLongOrDefault(ScannerProgressOverheadMsText.Text, 95), 0, 1000);
         _config.DefaultChirpMode = string.IsNullOrWhiteSpace(DefaultChirpModeText.Text) ? "NFM" : DefaultChirpModeText.Text.Trim();
         _config.RepeatScan = RepeatScanCheck.IsChecked == true;
         _config.RepeatDelaySeconds = (int)Math.Clamp(ParseLongOrDefault(RepeatDelayText.Text, 2), 0, 3600);
@@ -1929,6 +2294,10 @@ public sealed class AppConfig
     public string BandsCsvPath { get; set; } = "configs/bands.csv";
     public int ListenSeconds { get; set; } = 30;
     public double ActiveChannelMinSnrDb { get; set; } = 8.0;
+    public double ScannerChannelLowpassHz { get; set; } = 12000.0;
+    public int ScannerSamples { get; set; } = 8192;
+    public int ScannerSettleMs { get; set; } = 50;
+    public int ScannerProgressOverheadMs { get; set; } = 95;
     public string DefaultChirpMode { get; set; } = "NFM";
     public bool RepeatScan { get; set; } = false;
     public int RepeatDelaySeconds { get; set; } = 2;

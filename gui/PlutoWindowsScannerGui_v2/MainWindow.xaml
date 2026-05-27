@@ -345,6 +345,7 @@
                                       <RowDefinition Height="Auto" />
                                       <RowDefinition Height="Auto" />
                                       <RowDefinition Height="Auto" />
+                                      <RowDefinition Height="Auto" />
 </Grid.RowDefinitions>
                                 <Label Grid.Row="0" Grid.Column="0" Content="Project root" />
                                 <TextBox Grid.Row="0" Grid.Column="1" x:Name="RepoRootText" IsReadOnly="True" />
@@ -364,10 +365,13 @@
                                   <TextBox Grid.Row="7" Grid.Column="1" x:Name="ScannerSamplesText" Text="8192" />
                                   <Label Grid.Row="8" Grid.Column="0" Content="Scanner settle ms" />
                                   <TextBox Grid.Row="8" Grid.Column="1" x:Name="ScannerSettleMsText" Text="50" />
+                                  <Label Grid.Row="9" Grid.Column="0" Content="Progress overhead ms" />
+                                  <TextBox Grid.Row="9" Grid.Column="1" x:Name="ScannerProgressOverheadMsText" Text="95" />
 
 
 
-                                <TextBlock Grid.Row="9" Grid.ColumnSpan="2" Margin="6,10" Foreground="{StaticResource MutedTextBrush}"
+
+                                <TextBlock Grid.Row="10" Grid.ColumnSpan="2" Margin="6,10" Foreground="{StaticResource MutedTextBrush}"
                                            TextWrapping="Wrap"
                                            Text="The GUI reads standard band choices from configs\bands.csv. If you edit that CSV, restart the GUI or click Reload Bands." />
                             </Grid>
@@ -388,9 +392,30 @@
         </TabControl>
         <StatusBar Grid.Row="2" Background="#111827" Foreground="#e5e7eb" Margin="6,8,6,0">
             <StatusBarItem>
-                <TextBlock x:Name="StatusText" Text="Ready" Foreground="{StaticResource TextBrush}" />
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock x:Name="ScanProgressText"
+                               Text="Scan idle"
+                               Foreground="{StaticResource MutedTextBrush}"
+                               Margin="0,0,8,0" />
+                    <ProgressBar x:Name="ScanProgressBar"
+                                 Width="220"
+                                 Height="14"
+                                 Minimum="0"
+                                 Maximum="1"
+                                 Value="0" />
+                </StackPanel>
             </StatusBarItem>
+
             <Separator />
+
+            <StatusBarItem>
+                <TextBlock x:Name="StatusText"
+                           Text="Ready"
+                           Foreground="{StaticResource TextBrush}" />
+            </StatusBarItem>
+
+            <Separator />
+
             <StatusBarItem HorizontalAlignment="Right">
                 <TextBlock x:Name="FooterText"
                            Text="Pluto SDR Scanner - JSON profiles, narrow-channel scanner, live spectrum"
