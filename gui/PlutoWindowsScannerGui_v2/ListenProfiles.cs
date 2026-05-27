@@ -64,6 +64,7 @@ public partial class MainWindow
                 "--rx-channel",
                 "--iq-mode",
                 "--fm-channel-lowpass-hz",
+                "--fm-demod-rate-hz",
                 "--audio-lowpass-hz",
                 "--audio-highpass-hz",
                 "--fm-deviation-hz");
@@ -77,6 +78,7 @@ public partial class MainWindow
                 AddListenArg(args, "--rx-channel", "1");
                 AddListenArg(args, "--iq-mode", "normal");
                 AddListenArg(args, "--fm-channel-lowpass-hz", "8000");
+                AddListenArg(args, "--fm-demod-rate-hz", "100000");
                 AddListenArg(args, "--audio-lowpass-hz", "3000");
                 AddListenArg(args, "--audio-highpass-hz", "150");
                 AddListenArg(args, "--volume", "0.45");
@@ -89,6 +91,7 @@ public partial class MainWindow
                 AddListenArg(args, "--rx-channel", "1");
                 AddListenArg(args, "--iq-mode", "invert-q");
                 AddListenArg(args, "--fm-channel-lowpass-hz", "8000");
+                AddListenArg(args, "--fm-demod-rate-hz", "100000");
                 AddListenArg(args, "--audio-lowpass-hz", "3000");
                 AddListenArg(args, "--audio-highpass-hz", "150");
                 AddListenArg(args, "--volume", "0.45");
@@ -101,6 +104,7 @@ public partial class MainWindow
                 AddListenArg(args, "--rx-channel", "1");
                 AddListenArg(args, "--iq-mode", "normal");
                 AddListenArg(args, "--fm-channel-lowpass-hz", "10000");
+                AddListenArg(args, "--fm-demod-rate-hz", "100000");
                 AddListenArg(args, "--audio-lowpass-hz", "3500");
                 AddListenArg(args, "--audio-highpass-hz", "150");
                 AddListenArg(args, "--volume", "0.35");
