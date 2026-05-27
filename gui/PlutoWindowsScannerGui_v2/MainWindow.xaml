@@ -116,7 +116,20 @@
                                 <Label Content="Delay sec" />
                                 <TextBox x:Name="RepeatDelayText" Text="2" Width="52" />
                                 <Button x:Name="ClearActiveButton" Content="Clear List" Click="ClearActiveButton_Click" />
-                                <Button x:Name="ListenButton" Content="Listen / Record Selected" Click="ListenButton_Click" />
+                                
+                <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
+                    <TextBlock Text="Listen Profile:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <ComboBox x:Name="ListenProfileComboBox" Width="190" SelectedIndex="0">
+                        <ComboBoxItem Content="Auto by Mode"/>
+                        <ComboBoxItem Content="NOAA/NFM Clean Normal"/>
+                        <ComboBoxItem Content="NOAA/NFM Clean Invert-Q"/>
+                        <ComboBoxItem Content="Ham FM NFM"/>
+                        <ComboBoxItem Content="Airband AM"/>
+                        <ComboBoxItem Content="Broadcast FM WBFM"/>
+                        <ComboBoxItem Content="Digital Detect Only"/>
+                    </ComboBox>
+                </StackPanel>
+<Button x:Name="ListenButton" Content="Listen / Record Selected" Click="ListenButton_Click" />
                                 <Button x:Name="ExportChirpButton" Content="Export CHIRP CSV" Click="ExportChirpButton_Click" />
                                 <Button x:Name="OpenLastCsvButton" Content="Open Last CSV" Click="OpenLastCsvButton_Click" />
                                 <TextBlock x:Name="StatusText" Text="Ready" Margin="16,8" Foreground="{StaticResource MutedTextBrush}" />
