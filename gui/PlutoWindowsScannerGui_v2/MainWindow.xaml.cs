@@ -703,8 +703,14 @@ public partial class MainWindow : Window
         Log($"  {string.Join(" ", args)}");
         StatusText.Text = $"Recording {seconds}s audio from {selected.FrequencyMhz} MHz...";
 
+        RecordingCountdownWindow? recordingWindow = null;
+
         try
         {
+            recordingWindow = new RecordingCountdownWindow(seconds, selected.FrequencyMhz);
+            recordingWindow.Owner = this;
+            recordingWindow.Show();
+
             var psi = new ProcessStartInfo(audioExe, string.Join(" ", args))
             {
                 WorkingDirectory = _repoRoot,
@@ -731,6 +737,10 @@ public partial class MainWindow : Window
         {
             Log("Audio record failed: " + ex.Message);
             MessageBox.Show(ex.Message, "Audio record failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            recordingWindow?.CloseSafely();
         }
     }
 
