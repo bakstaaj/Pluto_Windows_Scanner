@@ -592,6 +592,66 @@ public partial class MainWindow : Window
         return -1;
     }
 
+
+    private void SpectrumCanvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (TryGetClickedChartFrequencyHz(SpectrumCanvas, e, out long frequencyHz))
+        {
+            ApplyClickedChartFrequency(frequencyHz, "spectrum");
+        }
+    }
+
+    private void WaterfallCanvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (TryGetClickedChartFrequencyHz(WaterfallCanvas, e, out long frequencyHz))
+        {
+            ApplyClickedChartFrequency(frequencyHz, "waterfall");
+        }
+    }
+
+    private bool TryGetClickedChartFrequencyHz(Canvas canvas, MouseButtonEventArgs e, out long frequencyHz)
+    {
+        frequencyHz = 0;
+
+        if (LastScanPoints.Count < 2)
+        {
+            StatusText.Text = "Run a scan or start live spectrum before clicking the chart.";
+            return false;
+        }
+
+        double width = canvas.ActualWidth;
+        if (width <= 1.0)
+        {
+            return false;
+        }
+
+        double minHz = LastScanPoints.Min(p => (double)p.FrequencyHz);
+        double maxHz = LastScanPoints.Max(p => (double)p.FrequencyHz);
+        if (maxHz <= minHz)
+        {
+            return false;
+        }
+
+        double x = e.GetPosition(canvas).X;
+        x = Math.Clamp(x, 0.0, width);
+
+        double fraction = x / width;
+        frequencyHz = (long)Math.Round(minHz + fraction * (maxHz - minHz));
+
+        return frequencyHz > 0;
+    }
+
+    private void ApplyClickedChartFrequency(long frequencyHz, string source)
+    {
+        SingleFreqText.Text = frequencyHz.ToString(CultureInfo.InvariantCulture);
+        LiveCenterFreqText.Text = frequencyHz.ToString(CultureInfo.InvariantCulture);
+
+        double mhz = frequencyHz / 1000000.0;
+        StatusText.Text = $"Clicked {source}: selected {mhz:F6} MHz.";
+        LiveSpectrumStatusText.Text = $"Selected {mhz:F6} MHz from {source} click.";
+        Log($"Clicked {source} chart at {frequencyHz} Hz; copied to Single Hz and Live Center Hz.");
+    }
+
     private void StopScanButton_Click(object sender, RoutedEventArgs e)
     {
         try
@@ -681,12 +741,33 @@ public partial class MainWindow : Window
 
     private void ListenButton_Click(object sender, RoutedEventArgs e)
     {
-        if (ActiveChannelsGrid.SelectedItem is not ActiveChannel selected)
+        if (ActiveChannelsGrid.SelectedItem is ActiveChannel selected)
         {
-            MessageBox.Show("Select an active channel first.", "No channel selected", MessageBoxButton.OK, MessageBoxImage.Information);
+            _ = ListenAsync(selected);
             return;
         }
-        _ = ListenAsync(selected);
+
+        if (!long.TryParse(SingleFreqText.Text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out long frequencyHz) || frequencyHz <= 0)
+        {
+            MessageBox.Show(
+                "Select an active channel first, or enter/click a frequency into the Single Hz field.",
+                "No frequency selected",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+
+        string mode = GuessManualListenMode();
+        var manual = new ActiveChannel
+        {
+            FrequencyHz = frequencyHz,
+            Label = "Manual / Chart Selected",
+            Mode = mode,
+            Active = true
+        };
+
+        StatusText.Text = $"Recording from Single Hz {frequencyHz}...";
+        _ = ListenAsync(manual);
     }
 
     private void ActiveChannelsGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -696,6 +777,21 @@ public partial class MainWindow : Window
             StatusText.Text = $"Listening to selected {selected.FrequencyMhz} MHz...";
             _ = ListenAsync(selected);
         }
+    }
+
+
+    private string GuessManualListenMode()
+    {
+        string profile = GetListenProfileName();
+
+        if (profile.Contains("Airband", StringComparison.OrdinalIgnoreCase))
+            return "am";
+
+        if (profile.Contains("Broadcast FM", StringComparison.OrdinalIgnoreCase) ||
+            profile.Contains("WBFM", StringComparison.OrdinalIgnoreCase))
+            return "wbfm";
+
+        return "nfm";
     }
 
     private async Task ListenAsync(ActiveChannel selected)
