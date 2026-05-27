@@ -10,7 +10,7 @@
   "BandsCsvPath": "C:\\msys64\\home\\jim\\sdrdev\\pluto_windows_scanner\\configs\\bands.csv",
   "ListenSeconds": 30,
   "DefaultChirpMode": "NFM",
-  "RepeatScan": true,
+  "RepeatScan": false,
   "RepeatDelaySeconds": 2,
   "LiveCenterHz": 162550000,
   "LiveFftSize": 512,
