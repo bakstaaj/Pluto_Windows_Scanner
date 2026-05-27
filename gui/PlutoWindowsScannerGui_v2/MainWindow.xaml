@@ -30,11 +30,32 @@
             <Setter Property="Foreground" Value="White" />
             <Setter Property="BorderBrush" Value="#1d4ed8" />
         </Style>
+
+        <Style x:Key="ReadableMenuItemStyle" TargetType="MenuItem">
+            <Setter Property="Foreground" Value="#111827" />
+            <Setter Property="Background" Value="#f8fafc" />
+        </Style>
+
+        <Style TargetType="MenuItem" BasedOn="{StaticResource ReadableMenuItemStyle}" />
         <Style TargetType="GroupBox">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
             <Setter Property="Margin" Value="6" />
             <Setter Property="Padding" Value="8" />
+        </Style>
+
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#1f2937" />
+            <Setter Property="Foreground" Value="#e5e7eb" />
+            <Setter Property="BorderBrush" Value="#334155" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="6,4" />
+        </Style>
+
+        <Style TargetType="DataGridRowHeader">
+            <Setter Property="Background" Value="#111827" />
+            <Setter Property="Foreground" Value="#e5e7eb" />
+            <Setter Property="BorderBrush" Value="#334155" />
         </Style>
     </Window.Resources>
 
@@ -45,16 +66,59 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <DockPanel Grid.Row="0" Margin="4,0,4,8">
-            <StackPanel Orientation="Vertical" DockPanel.Dock="Left">
-                <TextBlock Text="Windows Pluto SDR Scanner v2.0" FontSize="24" FontWeight="SemiBold" />
-                <TextBlock Text="HF/VHF/UHF scanner GUI front-end for the existing Pluto+ MSYS2 Windows tools" Foreground="{StaticResource MutedTextBrush}" />
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right">
-                <Button x:Name="OpenSessionsButton" Content="Open Sessions" Click="OpenSessionsButton_Click" />
-                <Button x:Name="OpenConfigButton" Content="Open Config Folder" Click="OpenConfigButton_Click" />
-            </StackPanel>
-        </DockPanel>
+        <StackPanel Grid.Row="0" Margin="4,0,4,8">
+            <DockPanel>
+                <StackPanel Orientation="Vertical" DockPanel.Dock="Left">
+                    <TextBlock Text="Windows Pluto SDR Scanner v2.0" FontSize="24" FontWeight="SemiBold" />
+                    <TextBlock Text="HF/VHF/UHF scanner GUI front-end for the existing Pluto+ MSYS2 Windows tools" Foreground="{StaticResource MutedTextBrush}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right">
+                    <Button x:Name="OpenSessionsButton" Content="Open Sessions" Click="OpenSessionsButton_Click" />
+                    <Button x:Name="OpenConfigButton" Content="Open Config Folder" Click="OpenConfigButton_Click" />
+                </StackPanel>
+            </DockPanel>
+
+            <Menu Margin="0,8,0,0" Background="#f8fafc" Foreground="#111827">
+                <MenuItem Header="_Scan">
+                    <MenuItem Header="Start Scan" Click="StartScanButton_Click" />
+                    <MenuItem Header="Stop Scan" Click="StopScanButton_Click" />
+                    <Separator />
+                    <MenuItem Header="Clear Active List" Click="ClearActiveButton_Click" />
+                    <MenuItem Header="Use Selected for Single Hz" Click="UseSelectedForSingleButton_Click" />
+                    <MenuItem Header="Use Selected for Live Center" Click="UseSelectedForLiveButton_Click" />
+                    <Separator />
+                    <MenuItem Header="Export CHIRP CSV" Click="ExportChirpButton_Click" />
+                    <MenuItem Header="Open Last CSV" Click="OpenLastCsvButton_Click" />
+                </MenuItem>
+
+                <MenuItem Header="_Listen / Record">
+                    <MenuItem Header="Listen / Record Selected or Single Hz" Click="ListenButton_Click" />
+                    <Separator />
+                    <MenuItem Header="Open Last WAV" Click="OpenLastWavButton_Click" />
+                    <MenuItem Header="Delete Last WAV" Click="DeleteLastWavButton_Click" />
+                    <MenuItem Header="Open Sessions Folder" Click="OpenSessionsFolderButton_Click" />
+                </MenuItem>
+
+                <MenuItem Header="_Profiles">
+                    <MenuItem Header="Reload Listen Profiles" Click="ReloadListenProfilesButton_Click" />
+                    <MenuItem Header="Open Listen Profiles JSON" Click="OpenListenProfilesJsonButton_Click" />
+                </MenuItem>
+
+                <MenuItem Header="_Live Spectrum">
+                    <MenuItem Header="Start Live Spectrum" Click="StartLiveSpectrumButton_Click" />
+                    <MenuItem Header="Stop Live Spectrum" Click="StopLiveSpectrumButton_Click" />
+                </MenuItem>
+
+                <MenuItem Header="_Config">
+                    <MenuItem Header="Open Config Folder" Click="OpenConfigButton_Click" />
+                    <MenuItem Header="Open Sessions Folder" Click="OpenSessionsFolderButton_Click" />
+                    <Separator />
+                    <MenuItem Header="Save Configuration" Click="SaveConfigButton_Click" />
+                    <MenuItem Header="Reload Bands" Click="ReloadBandsButton_Click" />
+                    <MenuItem Header="Reset Defaults" Click="ResetConfigButton_Click" />
+                </MenuItem>
+            </Menu>
+        </StackPanel>
 
         <TabControl Grid.Row="1" x:Name="MainTabs" Background="#0f172a" Foreground="#111827">
             <TabItem Header="Scanner">
@@ -110,13 +174,13 @@
                                 <CheckBox x:Name="VerboseCheck" Content="Verbose" Margin="12,6" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}" />
                             </WrapPanel>
                             <WrapPanel VerticalAlignment="Center">
-                                <Button x:Name="StartScanButton" Content="Start Scan" Click="StartScanButton_Click" FontWeight="SemiBold" />
-                                <Button x:Name="StopScanButton" Content="Stop" Click="StopScanButton_Click" IsEnabled="False" />
+                                <Button x:Name="StartScanButton" Visibility="Collapsed" Content="Start Scan" Click="StartScanButton_Click" FontWeight="SemiBold" />
+                                <Button x:Name="StopScanButton" Visibility="Collapsed" Content="Stop" Click="StopScanButton_Click" IsEnabled="False" />
                                 <CheckBox x:Name="RepeatScanCheck" Content="Repeat" Margin="12,6" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}" />
                                 <Label Content="Delay sec" />
                                 <TextBox x:Name="RepeatDelayText" Text="2" Width="52" />
-                                <Button x:Name="ClearActiveButton" Content="Clear List" Click="ClearActiveButton_Click" />
-                                <Button x:Name="UseSelectedForSingleButton" Content="Use Selected for Single Hz" Click="UseSelectedForSingleButton_Click" />
+                                <Button x:Name="ClearActiveButton" Visibility="Collapsed" Content="Clear List" Click="ClearActiveButton_Click" />
+                                <Button x:Name="UseSelectedForSingleButton" Visibility="Collapsed" Content="Use Selected for Single Hz" Click="UseSelectedForSingleButton_Click" />
                                 
                 <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
                     <TextBlock Text="Listen Profile:" VerticalAlignment="Center" Margin="0,0,6,0"/>
@@ -130,22 +194,22 @@
                         <ComboBoxItem Content="Digital Detect Only"/>
                     </ComboBox>
                     <Button x:Name="ReloadListenProfilesButton"
-                            Content="Reload"
+                            Visibility="Collapsed" Content="Reload"
                             Margin="8,0,0,0"
                             Click="ReloadListenProfilesButton_Click"
                             ToolTip="Reload configs/listen_profiles.json" />
                     <Button x:Name="OpenListenProfilesJsonButton"
-                            Content="Open JSON"
+                            Visibility="Collapsed" Content="Open JSON"
                             Margin="6,0,0,0"
                             Click="OpenListenProfilesJsonButton_Click"
                             ToolTip="Open configs/listen_profiles.json" />
                 </StackPanel>
-<Button x:Name="ListenButton" Content="Listen / Record Selected" Click="ListenButton_Click" />
-                                <Button x:Name="OpenLastWavButton" Content="Open Last WAV" Click="OpenLastWavButton_Click" />
-                                <Button x:Name="DeleteLastWavButton" Content="Delete Last WAV" Click="DeleteLastWavButton_Click" />
-                                <Button x:Name="OpenSessionsFolderButton" Content="Open Sessions Folder" Click="OpenSessionsFolderButton_Click" />
-                                <Button x:Name="ExportChirpButton" Content="Export CHIRP CSV" Click="ExportChirpButton_Click" />
-                                <Button x:Name="OpenLastCsvButton" Content="Open Last CSV" Click="OpenLastCsvButton_Click" />
+<Button x:Name="ListenButton" Visibility="Collapsed" Content="Listen / Record Selected" Click="ListenButton_Click" />
+                                <Button x:Name="OpenLastWavButton" Visibility="Collapsed" Content="Open Last WAV" Click="OpenLastWavButton_Click" />
+                                <Button x:Name="DeleteLastWavButton" Visibility="Collapsed" Content="Delete Last WAV" Click="DeleteLastWavButton_Click" />
+                                <Button x:Name="OpenSessionsFolderButton" Visibility="Collapsed" Content="Open Sessions Folder" Click="OpenSessionsFolderButton_Click" />
+                                <Button x:Name="ExportChirpButton" Visibility="Collapsed" Content="Export CHIRP CSV" Click="ExportChirpButton_Click" />
+                                <Button x:Name="OpenLastCsvButton" Visibility="Collapsed" Content="Open Last CSV" Click="OpenLastCsvButton_Click" />
                                 <TextBlock x:Name="StatusText" Text="Ready" Margin="16,8" Foreground="{StaticResource MutedTextBrush}" />
                             </WrapPanel>
                             <WrapPanel VerticalAlignment="Center">
@@ -165,9 +229,9 @@
                                 </ComboBox>
                                 <Label Content="Gain dB" />
                                 <TextBox x:Name="LiveGainDbText" Text="" Width="52" />
-                                <Button x:Name="UseSelectedForLiveButton" Content="Use Selected" Click="UseSelectedForLiveButton_Click" />
-                                <Button x:Name="StartLiveSpectrumButton" Content="Start Live Spectrum" Click="StartLiveSpectrumButton_Click" FontWeight="SemiBold" />
-                                <Button x:Name="StopLiveSpectrumButton" Content="Stop Live" Click="StopLiveSpectrumButton_Click" IsEnabled="False" />
+                                <Button x:Name="UseSelectedForLiveButton" Visibility="Collapsed" Content="Use Selected" Click="UseSelectedForLiveButton_Click" />
+                                <Button x:Name="StartLiveSpectrumButton" Visibility="Collapsed" Content="Start Live Spectrum" Click="StartLiveSpectrumButton_Click" FontWeight="SemiBold" />
+                                <Button x:Name="StopLiveSpectrumButton" Visibility="Collapsed" Content="Stop Live" Click="StopLiveSpectrumButton_Click" IsEnabled="False" />
                                 <TextBlock x:Name="LiveSpectrumStatusText" Text="Live spectrum idle" Margin="16,8" Foreground="{StaticResource MutedTextBrush}" />
                             </WrapPanel>
                         </StackPanel>

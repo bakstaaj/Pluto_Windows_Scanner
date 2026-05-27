@@ -679,17 +679,46 @@ public partial class MainWindow : Window
     }
 
 
+
+    private static void SetComboByText(ComboBox combo, string text)
+    {
+        foreach (var item in combo.Items)
+        {
+            if (item is ComboBoxItem comboItem &&
+                string.Equals(comboItem.Content?.ToString(), text, StringComparison.OrdinalIgnoreCase))
+            {
+                combo.SelectedItem = comboItem;
+                return;
+            }
+        }
+
+        combo.Text = text;
+    }
+
     private void UseSelectedForSingleButton_Click(object sender, RoutedEventArgs e)
     {
-        if (ActiveChannelsGrid.SelectedItem is not ActiveChannel selected)
+        if (ActiveChannelsGrid.SelectedItem is ActiveChannel selected)
         {
-            MessageBox.Show("Select an active channel first.", "No channel selected", MessageBoxButton.OK, MessageBoxImage.Information);
+            SingleFreqText.Text = selected.FrequencyHz.ToString(CultureInfo.InvariantCulture);
+            SetComboByText(ScanModeCombo, "Single Frequency");
+            StatusText.Text = $"Selected {selected.FrequencyMhz} MHz copied to Single Hz.";
+            Log($"Selected {selected.FrequencyHz} Hz copied to Single Hz.");
             return;
         }
 
-        SingleFreqText.Text = selected.FrequencyHz.ToString(CultureInfo.InvariantCulture);
-        StatusText.Text = $"Selected {selected.FrequencyMhz} MHz copied to Single Hz.";
-        Log($"Selected {selected.FrequencyHz} Hz copied to Single Hz.");
+        if (long.TryParse(SingleFreqText.Text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out long singleHz) && singleHz > 0)
+        {
+            SetComboByText(ScanModeCombo, "Single Frequency");
+            StatusText.Text = $"Using current Single Hz value: {singleHz}.";
+            Log($"No active row selected; using existing Single Hz value {singleHz}.");
+            return;
+        }
+
+        MessageBox.Show(
+            "Select an active channel row, click the spectrum/waterfall to fill Single Hz, or type a frequency into Single Hz first.",
+            "No frequency selected",
+            MessageBoxButton.OK,
+            MessageBoxImage.Information);
     }
 
     private void OpenLastCsvButton_Click(object sender, RoutedEventArgs e)
