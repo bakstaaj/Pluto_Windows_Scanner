@@ -23,6 +23,11 @@ namespace PlutoWindowsScannerGui;
 
 public partial class MainWindow : Window
 {
+    // GUI-side confirmation filter for detected active channels.
+    // Backend "active" rows can include weak noise/spikes, so require both
+    // the user threshold and a minimum signal-over-noise margin.
+    private const double DefaultActiveChannelMinSnrDb = 8.0;
+
     private string? _lastAudioWav;
     private readonly ObservableCollection<ActiveChannel> ActiveChannels = new();
     private readonly List<BandDefinition> Bands = new();
@@ -1165,6 +1170,7 @@ public partial class MainWindow : Window
         string selectedMode = SelectedBandMode();
         DateTime seenAt = DateTime.Now;
         int activeThisPass = 0;
+        var pendingActiveChannels = new List<ActiveChannel>();
 
         foreach (string rawLine in lines.Skip(1))
         {
@@ -1186,7 +1192,7 @@ public partial class MainWindow : Window
 
             if (!point.Active) continue;
             activeThisPass++;
-            UpsertActiveChannel(new ActiveChannel
+            pendingActiveChannels.Add(new ActiveChannel
             {
                 FrequencyHz = freq,
                 Label = label,
@@ -1207,6 +1213,39 @@ public partial class MainWindow : Window
             });
         }
 
+
+        double noiseFloorDbfs = EstimateNoiseFloorDbfs(LastScanPoints);
+
+        double manualThresholdDbfs = -65.0;
+        if (!double.TryParse(SquelchText.Text.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out manualThresholdDbfs))
+        {
+            manualThresholdDbfs = -65.0;
+        }
+
+        double activeMinSnrDb = _config.ActiveChannelMinSnrDb;
+        if (double.IsNaN(activeMinSnrDb) || double.IsInfinity(activeMinSnrDb) || activeMinSnrDb < 0.0)
+        {
+            activeMinSnrDb = DefaultActiveChannelMinSnrDb;
+        }
+
+        bool useSnrFilter = LastScanPoints.Count >= 5;
+        int guiRejectedByActiveFilter = 0;
+        var pointsByFrequency = LastScanPoints
+            .GroupBy(p => p.FrequencyHz)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(p => p.Dbfs).First());
+
+        foreach (var candidate in pendingActiveChannels)
+        {
+            if (!pointsByFrequency.TryGetValue(candidate.FrequencyHz, out var point) ||
+                !IsConfirmedActiveChannel(point, noiseFloorDbfs, manualThresholdDbfs, activeMinSnrDb, useSnrFilter))
+            {
+                guiRejectedByActiveFilter++;
+                continue;
+            }
+
+            UpsertActiveChannel(candidate);
+        }
+
         if (LastScanPoints.Count > 0)
         {
             WaterfallHistory.Add(LastScanPoints.ToList());
@@ -1216,7 +1255,49 @@ public partial class MainWindow : Window
         DrawSpectrum();
         DrawWaterfall();
         ActiveChannelsGrid.Items.Refresh();
-        Log($"Parsed {LastScanPoints.Count} scan rows; active this pass: {activeThisPass}; total unique active: {ActiveChannels.Count}.");
+        Log($"Parsed {LastScanPoints.Count} scan rows; backend active: {activeThisPass}; GUI rejected: {guiRejectedByActiveFilter}; noise floor: {noiseFloorDbfs:F1} dBFS; threshold: {manualThresholdDbfs:F1} dBFS; SNR filter: {(useSnrFilter ? "on" : "off")}; min SNR: {activeMinSnrDb:F1} dB; total unique active: {ActiveChannels.Count}.");
+    }
+
+
+    private static double EstimateNoiseFloorDbfs(IEnumerable<ScanPoint> points)
+    {
+        var values = points
+            .Select(p => p.Dbfs)
+            .Where(v => !double.IsNaN(v) && !double.IsInfinity(v))
+            .OrderBy(v => v)
+            .ToList();
+
+        if (values.Count == 0)
+        {
+            return -120.0;
+        }
+
+        // Lower-third percentile: more stable than average/max when a strong carrier exists.
+        int index = Math.Clamp(values.Count / 3, 0, values.Count - 1);
+        return values[index];
+    }
+
+    private static bool IsConfirmedActiveChannel(ScanPoint point, double noiseFloorDbfs, double manualThresholdDbfs, double minSnrDb, bool useSnrFilter)
+    {
+        if (!point.Active)
+        {
+            return false;
+        }
+
+        if (point.Dbfs < manualThresholdDbfs)
+        {
+            return false;
+        }
+
+        // For single-frequency or very small scans, there are not enough bins to
+        // estimate a meaningful noise floor. In that case, trust backend active
+        // plus the user's manual threshold.
+        if (useSnrFilter && (point.Dbfs - noiseFloorDbfs) < minSnrDb)
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private void UpsertActiveChannel(ActiveChannel incoming)
@@ -1599,6 +1680,7 @@ public partial class MainWindow : Window
         SessionsDirText.Text = _config.SessionsDir;
         BandsCsvText.Text = _config.BandsCsvPath;
         ListenSecondsText.Text = _config.ListenSeconds.ToString(CultureInfo.InvariantCulture);
+        ActiveChannelMinSnrDbText.Text = _config.ActiveChannelMinSnrDb.ToString("0.###", CultureInfo.InvariantCulture);
         DefaultChirpModeText.Text = _config.DefaultChirpMode;
         RepeatScanCheck.IsChecked = _config.RepeatScan;
         RepeatDelayText.Text = _config.RepeatDelaySeconds.ToString(CultureInfo.InvariantCulture);
@@ -1624,6 +1706,14 @@ public partial class MainWindow : Window
         _config.SessionsDir = string.IsNullOrWhiteSpace(SessionsDirText.Text) ? IoPath.Combine(_repoRoot, "sessions") : ExpandPath(SessionsDirText.Text.Trim());
         _config.BandsCsvPath = string.IsNullOrWhiteSpace(BandsCsvText.Text) ? IoPath.Combine(_repoRoot, "configs", "bands.csv") : ExpandPath(BandsCsvText.Text.Trim());
         _config.ListenSeconds = (int)Math.Clamp(ParseLongOrDefault(ListenSecondsText.Text, 30), 1, 3600);
+        if (double.TryParse(ActiveChannelMinSnrDbText.Text.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out double minSnrDb))
+        {
+            _config.ActiveChannelMinSnrDb = Math.Clamp(minSnrDb, 0.0, 60.0);
+        }
+        else
+        {
+            _config.ActiveChannelMinSnrDb = DefaultActiveChannelMinSnrDb;
+        }
         _config.DefaultChirpMode = string.IsNullOrWhiteSpace(DefaultChirpModeText.Text) ? "NFM" : DefaultChirpModeText.Text.Trim();
         _config.RepeatScan = RepeatScanCheck.IsChecked == true;
         _config.RepeatDelaySeconds = (int)Math.Clamp(ParseLongOrDefault(RepeatDelayText.Text, 2), 0, 3600);
@@ -1838,6 +1928,7 @@ public sealed class AppConfig
     public string SessionsDir { get; set; } = "sessions";
     public string BandsCsvPath { get; set; } = "configs/bands.csv";
     public int ListenSeconds { get; set; } = 30;
+    public double ActiveChannelMinSnrDb { get; set; } = 8.0;
     public string DefaultChirpMode { get; set; } = "NFM";
     public bool RepeatScan { get; set; } = false;
     public int RepeatDelaySeconds { get; set; } = 2;

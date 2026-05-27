@@ -323,7 +323,9 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
+                                                                      <RowDefinition Height="Auto" />
+                                      <RowDefinition Height="Auto" />
+</Grid.RowDefinitions>
                                 <Label Grid.Row="0" Grid.Column="0" Content="Project root" />
                                 <TextBox Grid.Row="0" Grid.Column="1" x:Name="RepoRootText" IsReadOnly="True" />
                                 <Label Grid.Row="1" Grid.Column="0" Content="Sessions folder" />
@@ -334,7 +336,13 @@
                                 <TextBox Grid.Row="3" Grid.Column="1" x:Name="ListenSecondsText" Text="30" />
                                 <Label Grid.Row="4" Grid.Column="0" Content="Default CHIRP mode" />
                                 <TextBox Grid.Row="4" Grid.Column="1" x:Name="DefaultChirpModeText" Text="NFM" />
-                                <TextBlock Grid.Row="5" Grid.ColumnSpan="2" Margin="6,10" Foreground="{StaticResource MutedTextBrush}"
+                                  <Label Grid.Row="5" Grid.Column="0" Content="Active min SNR dB" />
+                                  <TextBox Grid.Row="5" Grid.Column="1" x:Name="ActiveChannelMinSnrDbText" Text="8.0" />
+                                  <Label Grid.Row="6" Grid.Column="0" Content="Scanner channel LP Hz" />
+                                  <TextBox Grid.Row="6" Grid.Column="1" x:Name="ScannerChannelLowpassHzText" Text="12000" />
+
+
+                                <TextBlock Grid.Row="7" Grid.ColumnSpan="2" Margin="6,10" Foreground="{StaticResource MutedTextBrush}"
                                            TextWrapping="Wrap"
                                            Text="The GUI reads standard band choices from configs\bands.csv. If you edit that CSV, restart the GUI or click Reload Bands." />
                             </Grid>
