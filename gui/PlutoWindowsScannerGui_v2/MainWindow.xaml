@@ -310,6 +310,11 @@
             <TabItem Header="Configuration">
                 <ScrollViewer Margin="8">
                     <StackPanel>
+                          <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="8" Margin="6">
+                              <TextBlock Text="Configuration actions are available from the Config menu."
+                                         Foreground="{StaticResource MutedTextBrush}" />
+                          </Border>
+
                         <GroupBox Header="Application Paths and Defaults" Background="{StaticResource PanelBrush}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -353,9 +358,9 @@
                         </GroupBox>
 
                         <WrapPanel>
-                            <Button x:Name="SaveConfigButton" Content="Save Configuration" Click="SaveConfigButton_Click" />
-                            <Button x:Name="ReloadBandsButton" Content="Reload Bands" Click="ReloadBandsButton_Click" />
-                            <Button x:Name="ResetConfigButton" Content="Reset Defaults" Click="ResetConfigButton_Click" />
+                            <Button x:Name="SaveConfigButton" Content="Save Configuration" Click="SaveConfigButton_Click" Visibility="Collapsed" />
+                            <Button x:Name="ReloadBandsButton" Content="Reload Bands" Click="ReloadBandsButton_Click" Visibility="Collapsed" />
+                            <Button x:Name="ResetConfigButton" Content="Reset Defaults" Click="ResetConfigButton_Click" Visibility="Collapsed" />
                         </WrapPanel>
                     </StackPanel>
                 </ScrollViewer>
