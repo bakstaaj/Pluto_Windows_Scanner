@@ -2,7 +2,9 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Windows Pluto SDR Scanner v2.0" Height="860" Width="1260" MinHeight="720" MinWidth="1040"
-        Background="#0f172a" Foreground="#e5e7eb">
+        Background="#0f172a" Foreground="#e5e7eb"
+        WindowStartupLocation="CenterScreen"
+        WindowState="Maximized">
     <Window.Resources>
         <SolidColorBrush x:Key="PanelBrush" Color="#111827" />
         <SolidColorBrush x:Key="BorderBrush" Color="#334155" />
