@@ -683,6 +683,7 @@ public partial class MainWindow : Window
 
             // Apply selected listen profile after default args so profile args win.
             ApplyListenProfileArguments(args, ref mode);
+            LogListenCommandForTroubleshooting("pluto_audio_monitor.exe", args);
 
         AddOptionalNumericArg(args, "--bw", BwText.Text);
 
