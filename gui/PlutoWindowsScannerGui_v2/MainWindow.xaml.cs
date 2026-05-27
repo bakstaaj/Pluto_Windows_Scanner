@@ -1091,6 +1091,10 @@ public partial class MainWindow : Window
 
     private void StopScanButton_Click(object sender, RoutedEventArgs e)
     {
+        StopEstimatedScanProgress(false);
+        ScanProgressText.Text = $"Scan stop requested: {_scanProgressCurrent} / {_scanProgressTotal}";
+        StatusText.Text = "Scan stop requested.";
+
         try
         {
             _scanLoopCts?.Cancel();
