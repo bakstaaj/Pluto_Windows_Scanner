@@ -617,6 +617,20 @@ public partial class MainWindow : Window
         Log("Cleared active channel list and chart history.");
     }
 
+
+    private void UseSelectedForSingleButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (ActiveChannelsGrid.SelectedItem is not ActiveChannel selected)
+        {
+            MessageBox.Show("Select an active channel first.", "No channel selected", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        SingleFreqText.Text = selected.FrequencyHz.ToString(CultureInfo.InvariantCulture);
+        StatusText.Text = $"Selected {selected.FrequencyMhz} MHz copied to Single Hz.";
+        Log($"Selected {selected.FrequencyHz} Hz copied to Single Hz.");
+    }
+
     private void OpenLastCsvButton_Click(object sender, RoutedEventArgs e)
     {
         if (!string.IsNullOrWhiteSpace(_lastScanCsv) && File.Exists(_lastScanCsv))
