@@ -16,13 +16,20 @@ public partial class MainWindow
                 return "\"\"";
             }
 
+            // Some existing GUI args are already quote-wrapped for ProcessStartInfo.
+            // Normalize for display so the troubleshooting command is readable.
+            if (value.Length >= 2 && value.StartsWith("\"") && value.EndsWith("\""))
+            {
+                value = value.Substring(1, value.Length - 2);
+            }
+
             bool needsQuote = value.Any(char.IsWhiteSpace) || value.Contains('"');
             if (!needsQuote)
             {
                 return value;
             }
 
-            return "\"" + value.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
+            return "\"" + value.Replace("\"", "\\\"") + "\"";
         }
 
         return Quote(executable) + " " + string.Join(" ", args.Select(Quote));

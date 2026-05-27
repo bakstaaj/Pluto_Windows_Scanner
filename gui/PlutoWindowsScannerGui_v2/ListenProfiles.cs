@@ -21,9 +21,53 @@ public partial class MainWindow
         args.Add(value);
     }
 
+    private void RemoveListenArgs(List<string> args, params string[] names)
+    {
+        var remove = new HashSet<string>(names, StringComparer.OrdinalIgnoreCase);
+
+        for (int i = 0; i < args.Count; i++)
+        {
+            if (!remove.Contains(args[i]))
+            {
+                continue;
+            }
+
+            bool hasValue =
+                i + 1 < args.Count &&
+                !args[i + 1].StartsWith("--", StringComparison.Ordinal);
+
+            args.RemoveAt(i);
+
+            if (hasValue)
+            {
+                args.RemoveAt(i);
+            }
+
+            i--;
+        }
+    }
+
+
     private void ApplyListenProfileArguments(List<string> args, ref string mode)
     {
         string profile = GetListenProfileName();
+
+        if (profile != "Auto by Mode" && profile != "Digital Detect Only")
+        {
+            // Profiles should replace default GUI listen settings, not append conflicting args.
+            RemoveListenArgs(
+                args,
+                "--mode",
+                "--squelch-db",
+                "--squelch-off",
+                "--volume",
+                "--rx-channel",
+                "--iq-mode",
+                "--fm-channel-lowpass-hz",
+                "--audio-lowpass-hz",
+                "--audio-highpass-hz",
+                "--fm-deviation-hz");
+        }
 
         switch (profile)
         {
