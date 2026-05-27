@@ -1,0 +1,68 @@
+{
+  "version": "2.0-phase3k",
+  "profiles": [
+    {
+      "name": "Auto by Mode",
+      "description": "Chooses an analog listen profile from the selected/detected channel mode. NFM defaults to NOAA/NFM Clean Normal."
+    },
+    {
+      "name": "NOAA/NFM Clean Normal",
+      "mode": "nfm",
+      "rx_channel": 1,
+      "iq_mode": "normal",
+      "fm_channel_lowpass_hz": 8000,
+      "audio_lowpass_hz": 3000,
+      "audio_highpass_hz": 150,
+      "volume": 0.45,
+      "squelch": "off",
+      "notes": "Best understandable NOAA/NFM baseline from Phase 3I test 06. Good starting point for NOAA, marine VHF, and many narrow FM voice channels."
+    },
+    {
+      "name": "NOAA/NFM Clean Invert-Q",
+      "mode": "nfm",
+      "rx_channel": 1,
+      "iq_mode": "invert-q",
+      "fm_channel_lowpass_hz": 8000,
+      "audio_lowpass_hz": 3000,
+      "audio_highpass_hz": 150,
+      "volume": 0.45,
+      "squelch": "off",
+      "notes": "Alternate best understandable NOAA/NFM baseline from Phase 3I test 10. Use when Normal sounds worse."
+    },
+    {
+      "name": "Ham FM NFM",
+      "mode": "nfm",
+      "rx_channel": 1,
+      "iq_mode": "normal",
+      "fm_channel_lowpass_hz": 12000,
+      "audio_lowpass_hz": 4500,
+      "audio_highpass_hz": 150,
+      "volume": 0.35,
+      "squelch": "off",
+      "notes": "Wider NFM voice profile for 2m/70cm ham FM repeaters/simplex."
+    },
+    {
+      "name": "Airband AM",
+      "mode": "am",
+      "rf_bandwidth_hz": 25000,
+      "audio_lowpass_hz": 5000,
+      "audio_highpass_hz": 100,
+      "volume": 0.60,
+      "squelch": "off",
+      "notes": "Analog AM listen profile for aircraft band monitoring."
+    },
+    {
+      "name": "Broadcast FM WBFM",
+      "mode": "wbfm",
+      "rf_bandwidth_hz": 200000,
+      "audio_lowpass_hz": 15000,
+      "volume": 0.25,
+      "squelch": "off",
+      "notes": "Wide FM broadcast listen profile."
+    },
+    {
+      "name": "Digital Detect Only",
+      "description": "For P25/DMR/NXDN style channels. The scanner can detect/log activity, but analog Listen is disabled until a decoder path is added."
+    }
+  ]
+}

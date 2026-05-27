@@ -147,3 +147,13 @@ Gain dB: blank
 ```
 
 The live stream updates the top spectrum chart and waterfall continuously. The Phase 1 scan loop still controls the detected-active-channel table and CHIRP export.
+
+## Phase 2C — Tuning Workflow
+
+Phase 2C adds a `Tuned Hz` workflow:
+
+- Click the spectrum to select the nearest displayed frequency.
+- Double-click an active row to tune it.
+- Use `Tune Single Scan`, `Center Live`, or `Listen Tuned` from the tuned frequency field.
+
+See `docs/WINDOWS_SCANNER_GUI_V2_PHASE2C_TUNING.md` for details.

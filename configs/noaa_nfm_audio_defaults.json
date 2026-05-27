@@ -1,0 +1,19 @@
+{
+  "name": "NOAA/NFM current best listen defaults",
+  "source": "Phase 3I field test at 162.500 MHz",
+  "backend": "pluto_audio_monitor.exe",
+  "mode": "nfm",
+  "rate_hz": 1000000,
+  "rx_channel": 1,
+  "primary_iq_mode": "normal",
+  "alternate_iq_mode": "invert-q",
+  "fm_channel_lowpass_hz": 8000,
+  "audio_lowpass_hz": 3000,
+  "audio_highpass_hz": 150,
+  "volume": 0.45,
+  "notes": [
+    "Phase 3I files 06 and 10 were the best: speech clearly understandable, but still with static.",
+    "Do not pass the GUI's wide RF BW field to NFM listen; use the backend's default RF bandwidth and the complex FM channel low-pass instead.",
+    "Use iq_mode normal as the GUI default because file 06 was one of the best and does not require I/Q inversion. Keep invert-q as a fallback diagnostic."
+  ]
+}
