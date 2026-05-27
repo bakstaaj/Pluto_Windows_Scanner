@@ -72,12 +72,22 @@ public partial class MainWindow : Window
 
 
 
+
+    private void OpenRunLogWindowMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        var win = new RunLogWindow(() => LogText.Text)
+        {
+            Owner = this
+        };
+
+        win.Show();
+    }
+
     private void ExpandAllSectionsMenuItem_Click(object sender, RoutedEventArgs e)
     {
         ScanControlsExpander.IsExpanded = true;
         ChartsExpander.IsExpanded = true;
         ActiveChannelsExpander.IsExpanded = true;
-        RunLogExpander.IsExpanded = true;
         UpdateScannerSectionRows();
         StatusText.Text = "Expanded all scanner sections.";
     }
@@ -104,14 +114,12 @@ public partial class MainWindow : Window
 
     private void HideRunLogMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        RunLogExpander.IsExpanded = false;
         UpdateScannerSectionRows();
-        StatusText.Text = "Run log hidden.";
+        StatusText.Text = "Run log is available from View > Open Run Log Window.";
     }
 
     private void ShowRunLogMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        RunLogExpander.IsExpanded = true;
         UpdateScannerSectionRows();
         StatusText.Text = "Run log shown.";
     }
@@ -135,10 +143,7 @@ public partial class MainWindow : Window
                     ? new GridLength(2.2, GridUnitType.Star)
                     : GridLength.Auto;
 
-            RunLogRow.Height =
-                RunLogExpander?.IsExpanded == true
-                    ? new GridLength(1.2, GridUnitType.Star)
-                    : GridLength.Auto;
+            RunLogRow.Height = new GridLength(0);
         }
         catch
         {

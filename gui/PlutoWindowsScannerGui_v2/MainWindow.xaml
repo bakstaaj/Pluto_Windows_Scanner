@@ -120,8 +120,7 @@
                     <MenuItem Header="Expand All Sections" Click="ExpandAllSectionsMenuItem_Click" />
                     <MenuItem Header="Focus Charts / Waterfall" Click="FocusChartsMenuItem_Click" />
                     <MenuItem Header="Focus Active Channels" Click="FocusActiveChannelsMenuItem_Click" />
-                    <MenuItem Header="Hide Run Log" Click="HideRunLogMenuItem_Click" />
-                    <MenuItem Header="Show Run Log" Click="ShowRunLogMenuItem_Click" />
+                    <MenuItem Header="Open Run Log Window" Click="OpenRunLogWindowMenuItem_Click" />
                 </MenuItem>
 
                 <MenuItem Header="_Config">
@@ -142,7 +141,7 @@
                         <RowDefinition x:Name="ScanControlsRow" Height="Auto" />
                         <RowDefinition x:Name="ChartsRow" Height="2.1*" />
                         <RowDefinition x:Name="ActiveChannelsRow" Height="2.2*" />
-                        <RowDefinition x:Name="RunLogRow" Height="1.2*" />
+                        <RowDefinition x:Name="RunLogRow" Height="0" />
                     </Grid.RowDefinitions>
 
                                           <Expander x:Name="ScanControlsExpander" Grid.Row="0" Header="Scan Setup" IsExpanded="True" Expanded="ScannerSectionExpander_Changed" Collapsed="ScannerSectionExpander_Changed">
@@ -299,7 +298,7 @@
                     </GroupBox>
                       </Expander>
 
-                                          <Expander x:Name="RunLogExpander" Grid.Row="3" Header="Run Log" IsExpanded="True" Expanded="ScannerSectionExpander_Changed" Collapsed="ScannerSectionExpander_Changed">
+                                          <Expander x:Name="RunLogExpander" Visibility="Collapsed" Grid.Row="3" Header="Run Log" IsExpanded="False" Expanded="ScannerSectionExpander_Changed" Collapsed="ScannerSectionExpander_Changed">
 <GroupBox Grid.Row="3" Header="Run Log" Background="{StaticResource PanelBrush}">
                         <TextBox x:Name="LogText" Background="#020617" Foreground="#d1d5db" BorderBrush="{StaticResource BorderBrush}"
                                  FontFamily="Consolas" FontSize="12" TextWrapping="NoWrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" />
