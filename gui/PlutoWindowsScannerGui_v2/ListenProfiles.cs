@@ -29,6 +29,7 @@ public partial class MainWindow
         {
             case "NOAA/NFM Clean Normal":
                 mode = "nfm";
+                AddListenArg(args, "--mode", "nfm");
                 AddListenArg(args, "--rx-channel", "1");
                 AddListenArg(args, "--iq-mode", "normal");
                 AddListenArg(args, "--fm-channel-lowpass-hz", "8000");
@@ -40,6 +41,7 @@ public partial class MainWindow
 
             case "NOAA/NFM Clean Invert-Q":
                 mode = "nfm";
+                AddListenArg(args, "--mode", "nfm");
                 AddListenArg(args, "--rx-channel", "1");
                 AddListenArg(args, "--iq-mode", "invert-q");
                 AddListenArg(args, "--fm-channel-lowpass-hz", "8000");
@@ -51,6 +53,7 @@ public partial class MainWindow
 
             case "Ham FM NFM":
                 mode = "nfm";
+                AddListenArg(args, "--mode", "nfm");
                 AddListenArg(args, "--rx-channel", "1");
                 AddListenArg(args, "--iq-mode", "normal");
                 AddListenArg(args, "--fm-channel-lowpass-hz", "10000");
@@ -62,6 +65,7 @@ public partial class MainWindow
 
             case "Airband AM":
                 mode = "am";
+                AddListenArg(args, "--mode", "am");
                 AddListenArg(args, "--audio-lowpass-hz", "5000");
                 AddListenArg(args, "--audio-highpass-hz", "100");
                 AddListenArg(args, "--volume", "0.40");
@@ -70,6 +74,7 @@ public partial class MainWindow
 
             case "Broadcast FM WBFM":
                 mode = "wbfm";
+                AddListenArg(args, "--mode", "wbfm");
                 AddListenArg(args, "--audio-lowpass-hz", "15000");
                 AddListenArg(args, "--audio-highpass-hz", "30");
                 AddListenArg(args, "--volume", "0.30");

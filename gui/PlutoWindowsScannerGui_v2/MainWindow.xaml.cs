@@ -680,6 +680,10 @@ public partial class MainWindow : Window
             "--wav", Q(wav),
             "--csv", Q(csv)
         };
+
+            // Apply selected listen profile after default args so profile args win.
+            ApplyListenProfileArguments(args, ref mode);
+
         AddOptionalNumericArg(args, "--bw", BwText.Text);
 
         Log("Recording selected channel audio:");
