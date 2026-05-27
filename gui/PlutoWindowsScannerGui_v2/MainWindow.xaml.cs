@@ -1720,6 +1720,11 @@ public partial class MainWindow : Window
                     RateHz = NormalizeSampleRateHz(GetLong(values, index, "rate_hz")),
                     BandwidthHz = GetLong(values, index, "bw_hz"),
                     SquelchDb = GetDouble(values, index, "squelch_db"),
+                    ScanChannelLowpassHz = GetOptionalDouble(values, index, "scan_channel_lowpass_hz"),
+                    ScanSamples = GetOptionalInt(values, index, "scan_samples"),
+                    ScanSettleMs = GetOptionalInt(values, index, "scan_settle_ms"),
+                    ActiveMinSnrDb = GetOptionalDouble(values, index, "active_min_snr_db"),
+                    ProgressOverheadMs = GetOptionalInt(values, index, "progress_overhead_ms"),
                     Comment = Get(values, index, "notes")
                 };
                 if (band.StartHz > 0 && band.StopHz >= band.StartHz && !string.IsNullOrWhiteSpace(band.Name))
@@ -1736,9 +1741,52 @@ public partial class MainWindow : Window
         }
     }
 
+
+    private void ApplyBandScanDefaults(BandDefinition band)
+    {
+        bool changed = false;
+
+        if (band.ScanChannelLowpassHz.HasValue)
+        {
+            ScannerChannelLowpassHzText.Text = band.ScanChannelLowpassHz.Value.ToString("0.###", CultureInfo.InvariantCulture);
+            changed = true;
+        }
+
+        if (band.ScanSamples.HasValue)
+        {
+            ScannerSamplesText.Text = band.ScanSamples.Value.ToString(CultureInfo.InvariantCulture);
+            changed = true;
+        }
+
+        if (band.ScanSettleMs.HasValue)
+        {
+            ScannerSettleMsText.Text = band.ScanSettleMs.Value.ToString(CultureInfo.InvariantCulture);
+            changed = true;
+        }
+
+        if (band.ActiveMinSnrDb.HasValue)
+        {
+            ActiveChannelMinSnrDbText.Text = band.ActiveMinSnrDb.Value.ToString("0.###", CultureInfo.InvariantCulture);
+            changed = true;
+        }
+
+        if (band.ProgressOverheadMs.HasValue)
+        {
+            ScannerProgressOverheadMsText.Text = band.ProgressOverheadMs.Value.ToString(CultureInfo.InvariantCulture);
+            changed = true;
+        }
+
+        if (changed)
+        {
+            StatusText.Text = $"Applied scan defaults for {band.Name}.";
+            Log($"Applied scan defaults from bands.csv for {band.Name}.");
+        }
+    }
+
     private void BandCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (BandCombo.SelectedItem is not BandDefinition band) return;
+        ApplyBandScanDefaults(band);
         StartFreqText.Text = band.StartHz.ToString(CultureInfo.InvariantCulture);
         StopFreqText.Text = band.StopHz.ToString(CultureInfo.InvariantCulture);
         StepHzText.Text = band.StepHz.ToString(CultureInfo.InvariantCulture);
@@ -2263,6 +2311,19 @@ public partial class MainWindow : Window
         return values.ToArray();
     }
 
+
+    private static double? GetOptionalDouble(string[] values, Dictionary<string, int> index, string name)
+    {
+        string value = Get(values, index, name);
+        return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double result) ? result : null;
+    }
+
+    private static int? GetOptionalInt(string[] values, Dictionary<string, int> index, string name)
+    {
+        string value = Get(values, index, name);
+        return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int result) ? result : null;
+    }
+
     private static string Get(string[] values, Dictionary<string, int> index, string name)
     {
         return index.TryGetValue(name, out int i) && i >= 0 && i < values.Length ? values[i].Trim() : string.Empty;
@@ -2311,6 +2372,12 @@ public sealed class AppConfig
 
 public sealed class BandDefinition
 {
+    public double? ScanChannelLowpassHz { get; set; }
+    public int? ScanSamples { get; set; }
+    public int? ScanSettleMs { get; set; }
+    public double? ActiveMinSnrDb { get; set; }
+    public int? ProgressOverheadMs { get; set; }
+
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public long StartHz { get; set; }
