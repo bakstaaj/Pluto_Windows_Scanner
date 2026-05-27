@@ -903,6 +903,69 @@ public partial class MainWindow : Window
         }
     }
 
+
+    private string? FindMostRecentAudioWav()
+    {
+        if (!string.IsNullOrWhiteSpace(_lastAudioWav) && File.Exists(_lastAudioWav))
+        {
+            return _lastAudioWav;
+        }
+
+        try
+        {
+            EnsureSessionsDir();
+
+            return Directory
+                .EnumerateFiles(_config.SessionsDir, "listen_*.wav")
+                .OrderByDescending(File.GetLastWriteTimeUtc)
+                .FirstOrDefault();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private void DeleteLastWavButton_Click(object sender, RoutedEventArgs e)
+    {
+        string? wav = FindMostRecentAudioWav();
+
+        if (string.IsNullOrWhiteSpace(wav) || !File.Exists(wav))
+        {
+            MessageBox.Show("No audio WAV was found to delete.", "No WAV", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var result = MessageBox.Show(
+            $"Delete this recording?\n\n{wav}",
+            "Delete Last WAV",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        if (result != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        try
+        {
+            File.Delete(wav);
+
+            if (string.Equals(_lastAudioWav, wav, StringComparison.OrdinalIgnoreCase))
+            {
+                _lastAudioWav = null;
+            }
+
+            StatusText.Text = "Deleted last WAV.";
+            Log($"Deleted WAV: {wav}");
+        }
+        catch (Exception ex)
+        {
+            Log("Delete WAV failed: " + ex.Message);
+            MessageBox.Show(ex.Message, "Delete WAV failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void ExportChirpButton_Click(object sender, RoutedEventArgs e)
     {
         if (ActiveChannels.Count == 0)
