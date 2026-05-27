@@ -44,6 +44,14 @@
             <Setter Property="Padding" Value="8" />
         </Style>
 
+        <Style TargetType="Expander">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Background" Value="{StaticResource PanelBrush}" />
+            <Setter Property="Margin" Value="6" />
+            <Setter Property="Padding" Value="4" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+
         <Style TargetType="DataGridColumnHeader">
             <Setter Property="Background" Value="#1f2937" />
             <Setter Property="Foreground" Value="#e5e7eb" />
@@ -109,6 +117,15 @@
                     <MenuItem Header="Stop Live Spectrum" Click="StopLiveSpectrumButton_Click" />
                 </MenuItem>
 
+
+                <MenuItem Header="_View">
+                    <MenuItem Header="Expand All Sections" Click="ExpandAllSectionsMenuItem_Click" />
+                    <MenuItem Header="Focus Charts / Waterfall" Click="FocusChartsMenuItem_Click" />
+                    <MenuItem Header="Focus Active Channels" Click="FocusActiveChannelsMenuItem_Click" />
+                    <MenuItem Header="Hide Run Log" Click="HideRunLogMenuItem_Click" />
+                    <MenuItem Header="Show Run Log" Click="ShowRunLogMenuItem_Click" />
+                </MenuItem>
+
                 <MenuItem Header="_Config">
                     <MenuItem Header="Open Config Folder" Click="OpenConfigButton_Click" />
                     <MenuItem Header="Open Sessions Folder" Click="OpenSessionsFolderButton_Click" />
@@ -124,13 +141,14 @@
             <TabItem Header="Scanner">
                 <Grid Margin="4">
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="2.1*" />
-                        <RowDefinition Height="2.2*" />
-                        <RowDefinition Height="1.2*" />
+                        <RowDefinition x:Name="ScanControlsRow" Height="Auto" />
+                        <RowDefinition x:Name="ChartsRow" Height="2.1*" />
+                        <RowDefinition x:Name="ActiveChannelsRow" Height="2.2*" />
+                        <RowDefinition x:Name="RunLogRow" Height="1.2*" />
                     </Grid.RowDefinitions>
 
-                    <GroupBox Grid.Row="0" Header="Scan Controls" Background="{StaticResource PanelBrush}">
+                                          <Expander x:Name="ScanControlsExpander" Grid.Row="0" Header="Scan Setup" IsExpanded="True" Expanded="ScannerSectionExpander_Changed" Collapsed="ScannerSectionExpander_Changed">
+<GroupBox Grid.Row="0" Header="Scan Controls" Background="{StaticResource PanelBrush}">
                         <StackPanel>
                             <WrapPanel VerticalAlignment="Center">
                                 <Label Content="Mode" />
@@ -236,8 +254,10 @@
                             </WrapPanel>
                         </StackPanel>
                     </GroupBox>
+                      </Expander>
 
-                    <Grid Grid.Row="1" Margin="6">
+                                          <Expander x:Name="ChartsExpander" Grid.Row="1" Header="Spectrum and Waterfall" IsExpanded="True" Expanded="ScannerSectionExpander_Changed" Collapsed="ScannerSectionExpander_Changed">
+<Grid Grid.Row="1" Margin="6">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="1.45*" />
                             <ColumnDefinition Width="1*" />
@@ -255,8 +275,10 @@
                             </Grid>
                         </GroupBox>
                     </Grid>
+                      </Expander>
 
-                    <GroupBox Grid.Row="2" Header="Detected Active Channels" Background="{StaticResource PanelBrush}">
+                                          <Expander x:Name="ActiveChannelsExpander" Grid.Row="2" Header="Detected Active Channels" IsExpanded="True" Expanded="ScannerSectionExpander_Changed" Collapsed="ScannerSectionExpander_Changed">
+<GroupBox Grid.Row="2" Header="Detected Active Channels" Background="{StaticResource PanelBrush}">
                         <DataGrid x:Name="ActiveChannelsGrid" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
                                   MouseDoubleClick="ActiveChannelsGrid_MouseDoubleClick"
                                   Background="#020617" Foreground="#e5e7eb" RowBackground="#111827" AlternatingRowBackground="#0f172a"
@@ -277,11 +299,14 @@
                             </DataGrid.Columns>
                         </DataGrid>
                     </GroupBox>
+                      </Expander>
 
-                    <GroupBox Grid.Row="3" Header="Run Log" Background="{StaticResource PanelBrush}">
+                                          <Expander x:Name="RunLogExpander" Grid.Row="3" Header="Run Log" IsExpanded="True" Expanded="ScannerSectionExpander_Changed" Collapsed="ScannerSectionExpander_Changed">
+<GroupBox Grid.Row="3" Header="Run Log" Background="{StaticResource PanelBrush}">
                         <TextBox x:Name="LogText" Background="#020617" Foreground="#d1d5db" BorderBrush="{StaticResource BorderBrush}"
                                  FontFamily="Consolas" FontSize="12" TextWrapping="NoWrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" />
                     </GroupBox>
+                      </Expander>
                 </Grid>
             </TabItem>
 

@@ -53,6 +53,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         InitializeListenProfilesFromConfig();
+        Loaded += (_, _) => UpdateScannerSectionRows();
         ActiveChannelsGrid.ItemsSource = ActiveChannels;
         _repoRoot = FindRepoRoot();
         RepoRootText.Text = _repoRoot;
@@ -67,6 +68,82 @@ public partial class MainWindow : Window
         };
         Log("Windows Pluto SDR Scanner GUI v2.0 Phase 2 loaded.");
         Log($"Project root: {_repoRoot}");
+    }
+
+
+
+    private void ExpandAllSectionsMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        ScanControlsExpander.IsExpanded = true;
+        ChartsExpander.IsExpanded = true;
+        ActiveChannelsExpander.IsExpanded = true;
+        RunLogExpander.IsExpanded = true;
+        UpdateScannerSectionRows();
+        StatusText.Text = "Expanded all scanner sections.";
+    }
+
+    private void FocusChartsMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        ScanControlsExpander.IsExpanded = false;
+        ChartsExpander.IsExpanded = true;
+        ActiveChannelsExpander.IsExpanded = false;
+        RunLogExpander.IsExpanded = false;
+        UpdateScannerSectionRows();
+        StatusText.Text = "Focused spectrum and waterfall.";
+    }
+
+    private void FocusActiveChannelsMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        ScanControlsExpander.IsExpanded = false;
+        ChartsExpander.IsExpanded = false;
+        ActiveChannelsExpander.IsExpanded = true;
+        RunLogExpander.IsExpanded = false;
+        UpdateScannerSectionRows();
+        StatusText.Text = "Focused detected active channels.";
+    }
+
+    private void HideRunLogMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        RunLogExpander.IsExpanded = false;
+        UpdateScannerSectionRows();
+        StatusText.Text = "Run log hidden.";
+    }
+
+    private void ShowRunLogMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        RunLogExpander.IsExpanded = true;
+        UpdateScannerSectionRows();
+        StatusText.Text = "Run log shown.";
+    }
+
+    private void ScannerSectionExpander_Changed(object sender, RoutedEventArgs e)
+    {
+        UpdateScannerSectionRows();
+    }
+
+    private void UpdateScannerSectionRows()
+    {
+        try
+        {
+            ChartsRow.Height =
+                ChartsExpander?.IsExpanded == true
+                    ? new GridLength(2.1, GridUnitType.Star)
+                    : GridLength.Auto;
+
+            ActiveChannelsRow.Height =
+                ActiveChannelsExpander?.IsExpanded == true
+                    ? new GridLength(2.2, GridUnitType.Star)
+                    : GridLength.Auto;
+
+            RunLogRow.Height =
+                RunLogExpander?.IsExpanded == true
+                    ? new GridLength(1.2, GridUnitType.Star)
+                    : GridLength.Auto;
+        }
+        catch
+        {
+            // Best effort during startup/layout changes.
+        }
     }
 
     private void StartScanButton_Click(object sender, RoutedEventArgs e)
