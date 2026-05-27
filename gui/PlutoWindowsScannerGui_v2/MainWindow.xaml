@@ -190,6 +190,7 @@
 
                     <GroupBox Grid.Row="2" Header="Detected Active Channels" Background="{StaticResource PanelBrush}">
                         <DataGrid x:Name="ActiveChannelsGrid" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
+                                  MouseDoubleClick="ActiveChannelsGrid_MouseDoubleClick"
                                   Background="#020617" Foreground="#e5e7eb" RowBackground="#111827" AlternatingRowBackground="#0f172a"
                                   GridLinesVisibility="Horizontal" BorderBrush="{StaticResource BorderBrush}">
                             <DataGrid.Columns>
