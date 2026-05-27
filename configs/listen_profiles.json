@@ -1,0 +1,61 @@
+{
+  "profiles": [
+    {
+      "name": "NOAA/NFM Clean Normal",
+      "mode": "nfm",
+      "rx_channel": 1,
+      "iq_mode": "normal",
+      "fm_channel_lowpass_hz": 8000,
+      "fm_demod_rate_hz": 100000,
+      "audio_lowpass_hz": 3000,
+      "audio_highpass_hz": 150,
+      "volume": 0.45,
+      "squelch": "off"
+    },
+    {
+      "name": "NOAA/NFM Clean Invert-Q",
+      "mode": "nfm",
+      "rx_channel": 1,
+      "iq_mode": "invert-q",
+      "fm_channel_lowpass_hz": 8000,
+      "fm_demod_rate_hz": 100000,
+      "audio_lowpass_hz": 3000,
+      "audio_highpass_hz": 150,
+      "volume": 0.45,
+      "squelch": "off"
+    },
+    {
+      "name": "Ham FM NFM",
+      "mode": "nfm",
+      "rx_channel": 1,
+      "iq_mode": "normal",
+      "fm_channel_lowpass_hz": 10000,
+      "fm_demod_rate_hz": 100000,
+      "audio_lowpass_hz": 3500,
+      "audio_highpass_hz": 150,
+      "volume": 0.35,
+      "squelch": "off"
+    },
+    {
+      "name": "Airband AM",
+      "mode": "am",
+      "audio_lowpass_hz": 5000,
+      "audio_highpass_hz": 100,
+      "volume": 0.40,
+      "squelch": "off"
+    },
+    {
+      "name": "Broadcast FM WBFM",
+      "mode": "wbfm",
+      "fm_channel_lowpass_hz": 120000,
+      "audio_lowpass_hz": 15000,
+      "audio_highpass_hz": 30,
+      "volume": 0.30,
+      "squelch": "off"
+    },
+    {
+      "name": "Digital Detect Only",
+      "detect_only": true
+    }
+  ]
+}

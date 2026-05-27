@@ -49,6 +49,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        InitializeListenProfilesFromConfig();
         ActiveChannelsGrid.ItemsSource = ActiveChannels;
         _repoRoot = FindRepoRoot();
         RepoRootText.Text = _repoRoot;
