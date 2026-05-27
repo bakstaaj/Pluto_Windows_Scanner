@@ -225,7 +225,7 @@
                                 <Button x:Name="OpenSessionsFolderButton" Visibility="Collapsed" Content="Open Sessions Folder" Click="OpenSessionsFolderButton_Click" />
                                 <Button x:Name="ExportChirpButton" Visibility="Collapsed" Content="Export CHIRP CSV" Click="ExportChirpButton_Click" />
                                 <Button x:Name="OpenLastCsvButton" Visibility="Collapsed" Content="Open Last CSV" Click="OpenLastCsvButton_Click" />
-                                <TextBlock x:Name="StatusText" Text="Ready" Margin="16,8" Foreground="{StaticResource MutedTextBrush}" />
+                                <TextBlock Text="Ready" Margin="16,8" Foreground="{StaticResource MutedTextBrush}" />
                             </WrapPanel>
                             <WrapPanel VerticalAlignment="Center">
                                 <Label Content="Live Center Hz" />
@@ -366,7 +366,16 @@
                 </ScrollViewer>
             </TabItem>
         </TabControl>
-
-        <TextBlock Grid.Row="2" x:Name="FooterText" Text="v2.0 Phase 2 — Windows host GUI with live spectrum" Foreground="#94a3b8" Margin="6,8,6,0" />
+        <StatusBar Grid.Row="2" Background="#111827" Foreground="#e5e7eb" Margin="6,8,6,0">
+            <StatusBarItem>
+                <TextBlock x:Name="StatusText" Text="Ready" Foreground="{StaticResource TextBrush}" />
+            </StatusBarItem>
+            <Separator />
+            <StatusBarItem HorizontalAlignment="Right">
+                <TextBlock x:Name="FooterText"
+                           Text="Pluto SDR Scanner - JSON profiles, narrow-channel scanner, live spectrum"
+                           Foreground="{StaticResource MutedTextBrush}" />
+            </StatusBarItem>
+        </StatusBar>
     </Grid>
 </Window>
