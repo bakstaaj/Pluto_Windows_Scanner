@@ -80,10 +80,6 @@
                     <TextBlock Text="Windows Pluto SDR Scanner v2.0" FontSize="24" FontWeight="SemiBold" />
                     <TextBlock Text="HF/VHF/UHF scanner GUI front-end for the existing Pluto+ MSYS2 Windows tools" Foreground="{StaticResource MutedTextBrush}" />
                 </StackPanel>
-                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right">
-                    <Button x:Name="OpenSessionsButton" Content="Open Sessions" Click="OpenSessionsButton_Click" />
-                    <Button x:Name="OpenConfigButton" Content="Open Config Folder" Click="OpenConfigButton_Click" />
-                </StackPanel>
             </DockPanel>
 
             <Menu Margin="0,8,0,0" Background="#f8fafc" Foreground="#111827">
