@@ -1810,6 +1810,104 @@ public partial class MainWindow : Window
         DrawWaterfall();
     }
 
+
+    private static void GetSpectrumDbScale(IEnumerable<double> values, out double minDb, out double maxDb)
+    {
+        var finite = values
+            .Where(v => !double.IsNaN(v) && !double.IsInfinity(v))
+            .OrderBy(v => v)
+            .ToList();
+
+        if (finite.Count == 0)
+        {
+            minDb = -120.0;
+            maxDb = -20.0;
+            return;
+        }
+
+        double actualMin = finite.First();
+        double actualMax = finite.Last();
+
+        // Add headroom so strong peaks do not clip against the top of the canvas.
+        // Use nice 5/10 dB-ish bounds so the scale labels are readable.
+        maxDb = Math.Ceiling((actualMax + 6.0) / 5.0) * 5.0;
+        minDb = Math.Floor((actualMin - 3.0) / 10.0) * 10.0;
+
+        // Keep a reasonable visible range even when all samples are close together.
+        if ((maxDb - minDb) < 30.0)
+        {
+            minDb = maxDb - 30.0;
+        }
+
+        // Avoid absurd display ranges if one bad point appears.
+        if ((maxDb - minDb) > 140.0)
+        {
+            minDb = maxDb - 140.0;
+        }
+    }
+
+    private static double SpectrumY(double db, double minDb, double maxDb, double height)
+    {
+        double denom = Math.Max(1e-9, maxDb - minDb);
+        double normalized = (maxDb - db) / denom;
+        return Math.Clamp(normalized * height, 0.0, height);
+    }
+
+    private void DrawSpectrumScale(Canvas canvas, double minDb, double maxDb)
+    {
+        double width = canvas.ActualWidth;
+        double height = canvas.ActualHeight;
+
+        if (width <= 4 || height <= 4)
+        {
+            return;
+        }
+
+        double range = Math.Max(1.0, maxDb - minDb);
+        double tickStep = range <= 60.0 ? 10.0 : 20.0;
+        double firstTick = Math.Ceiling(minDb / tickStep) * tickStep;
+
+        var gridBrush = new SolidColorBrush(Color.FromArgb(80, 148, 163, 184));
+        var textBrush = new SolidColorBrush(Color.FromRgb(148, 163, 184));
+
+        for (double tick = firstTick; tick <= maxDb + 0.001; tick += tickStep)
+        {
+            double y = SpectrumY(tick, minDb, maxDb, height);
+
+            var line = new Line
+            {
+                X1 = 42,
+                Y1 = y,
+                X2 = Math.Max(42, width),
+                Y2 = y,
+                Stroke = gridBrush,
+                StrokeThickness = 1
+            };
+            canvas.Children.Add(line);
+
+            var label = new TextBlock
+            {
+                Text = $"{tick:0} dB",
+                Foreground = textBrush,
+                FontSize = 10
+            };
+            Canvas.SetLeft(label, 3);
+            Canvas.SetTop(label, Math.Clamp(y - 8, 0, Math.Max(0, height - 16)));
+            canvas.Children.Add(label);
+        }
+
+        var title = new TextBlock
+        {
+            Text = "dBFS",
+            Foreground = textBrush,
+            FontSize = 10,
+            FontWeight = FontWeights.SemiBold
+        };
+        Canvas.SetLeft(title, 3);
+        Canvas.SetTop(title, 2);
+        canvas.Children.Add(title);
+    }
+
     private void DrawEmptyCharts()
     {
         SpectrumCanvas.Children.Clear();
@@ -1830,9 +1928,11 @@ public partial class MainWindow : Window
         double h = Math.Max(1, SpectrumCanvas.ActualHeight);
         DrawGrid(SpectrumCanvas, w, h);
 
-        GetDbScale(LastScanPoints.Select(p => p.Dbfs), out double minDb, out double maxDb);
+        GetSpectrumDbScale(LastScanPoints.Select(p => p.Dbfs), out double minDb, out double maxDb);
         double minFreq = LastScanPoints.Min(p => (double)p.FrequencyHz);
         double maxFreq = LastScanPoints.Max(p => (double)p.FrequencyHz);
+
+        DrawSpectrumScale(SpectrumCanvas, minDb, maxDb);
         if (Math.Abs(maxFreq - minFreq) < 1) maxFreq = minFreq + 1;
 
         var line = new Polyline
