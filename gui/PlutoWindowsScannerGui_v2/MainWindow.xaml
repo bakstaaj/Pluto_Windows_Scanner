@@ -311,6 +311,19 @@
                 <ScrollViewer Margin="8">
                     <StackPanel>
                           <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="8" Margin="6">
+                              <StackPanel Orientation="Horizontal">
+                                  <Button x:Name="SaveConfigTopButton"
+                                          Content="Save Configuration"
+                                          Click="SaveConfigButton_Click"
+                                          FontWeight="SemiBold"
+                                          MinWidth="150" />
+                                  <TextBlock Text="  Save after changing scanner samples, settle time, channel low-pass, or SNR settings."
+                                             VerticalAlignment="Center"
+                                             Foreground="{StaticResource MutedTextBrush}" />
+                              </StackPanel>
+                          </Border>
+
+                          <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="8" Margin="6">
                               <TextBlock Text="Configuration actions are available from the Config menu."
                                          Foreground="{StaticResource MutedTextBrush}" />
                           </Border>
@@ -330,6 +343,8 @@
                                     <RowDefinition Height="Auto" />
                                                                       <RowDefinition Height="Auto" />
                                       <RowDefinition Height="Auto" />
+                                      <RowDefinition Height="Auto" />
+                                      <RowDefinition Height="Auto" />
 </Grid.RowDefinitions>
                                 <Label Grid.Row="0" Grid.Column="0" Content="Project root" />
                                 <TextBox Grid.Row="0" Grid.Column="1" x:Name="RepoRootText" IsReadOnly="True" />
@@ -345,9 +360,14 @@
                                   <TextBox Grid.Row="5" Grid.Column="1" x:Name="ActiveChannelMinSnrDbText" Text="8.0" />
                                   <Label Grid.Row="6" Grid.Column="0" Content="Scanner channel LP Hz" />
                                   <TextBox Grid.Row="6" Grid.Column="1" x:Name="ScannerChannelLowpassHzText" Text="12000" />
+                                  <Label Grid.Row="7" Grid.Column="0" Content="Scanner samples" />
+                                  <TextBox Grid.Row="7" Grid.Column="1" x:Name="ScannerSamplesText" Text="8192" />
+                                  <Label Grid.Row="8" Grid.Column="0" Content="Scanner settle ms" />
+                                  <TextBox Grid.Row="8" Grid.Column="1" x:Name="ScannerSettleMsText" Text="50" />
 
 
-                                <TextBlock Grid.Row="7" Grid.ColumnSpan="2" Margin="6,10" Foreground="{StaticResource MutedTextBrush}"
+
+                                <TextBlock Grid.Row="9" Grid.ColumnSpan="2" Margin="6,10" Foreground="{StaticResource MutedTextBrush}"
                                            TextWrapping="Wrap"
                                            Text="The GUI reads standard band choices from configs\bands.csv. If you edit that CSV, restart the GUI or click Reload Bands." />
                             </Grid>
