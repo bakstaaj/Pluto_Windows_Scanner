@@ -7,6 +7,8 @@ namespace PlutoWindowsScannerGui;
 
 public sealed class RecordingCountdownWindow : Window
 {
+    public event EventHandler? StopRequested;
+
     private readonly TextBlock _countdownText;
     private readonly ProgressBar _progressBar;
     private readonly DispatcherTimer _timer;
@@ -21,8 +23,9 @@ public sealed class RecordingCountdownWindow : Window
         _endUtc = _startUtc.AddSeconds(_totalSeconds);
 
         Title = "Recording Audio";
-        Width = 360;
-        Height = 175;
+        Width = 390;
+        Height = 240;
+        MinHeight = 240;
         ResizeMode = ResizeMode.NoResize;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         ShowInTaskbar = false;
@@ -61,9 +64,29 @@ public sealed class RecordingCountdownWindow : Window
             Minimum = 0,
             Maximum = _totalSeconds,
             Height = 20,
-            Value = 0
+            Value = 0,
+            Margin = new Thickness(0, 0, 0, 14)
         };
         root.Children.Add(_progressBar);
+
+        var stopButton = new Button
+        {
+            Content = "Stop Recording",
+            Height = 34,
+            MinWidth = 150,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            FontWeight = FontWeights.SemiBold
+        };
+
+        stopButton.Click += (_, _) =>
+        {
+            stopButton.IsEnabled = false;
+            stopButton.Content = "Stopping...";
+            _countdownText.Text = "Stopping and finalizing WAV...";
+            StopRequested?.Invoke(this, EventArgs.Empty);
+        };
+
+        root.Children.Add(stopButton);
 
         Content = root;
 

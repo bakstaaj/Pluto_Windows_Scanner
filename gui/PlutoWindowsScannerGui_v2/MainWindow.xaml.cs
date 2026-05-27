@@ -29,6 +29,7 @@ public partial class MainWindow : Window
     private readonly List<List<ScanPoint>> WaterfallHistory = new();
     private readonly List<ScanPoint> LastScanPoints = new();
     private Process? _scanProcess;
+    private Process? _listenProcess;
     private Process? _spectrumProcess;
     private CancellationTokenSource? _scanLoopCts;
     private CancellationTokenSource? _spectrumCts;
@@ -815,6 +816,8 @@ public partial class MainWindow : Window
         string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
         string wav = IoPath.Combine(_config.SessionsDir, $"listen_{selected.FrequencyHz}_{timestamp}.wav");
         string csv = IoPath.Combine(_config.SessionsDir, "audio_log.csv");
+        string stopFile = IoPath.Combine(_config.SessionsDir, $"stop_listen_{selected.FrequencyHz}_{timestamp}.flag");
+        try { if (File.Exists(stopFile)) File.Delete(stopFile); } catch { }
         _lastAudioWav = wav;
 
         var args = new List<string>
@@ -826,7 +829,8 @@ public partial class MainWindow : Window
             "--seconds", seconds.ToString(CultureInfo.InvariantCulture),
             "--squelch-db", SquelchText.Text.Trim(),
             "--wav", Q(wav),
-            "--csv", Q(csv)
+            "--csv", Q(csv),
+            "--stop-file", Q(stopFile)
         };
 
             // Apply selected listen profile after default args so profile args win.
@@ -846,6 +850,19 @@ public partial class MainWindow : Window
         {
             recordingWindow = new RecordingCountdownWindow(seconds, selected.FrequencyMhz);
             recordingWindow.Owner = this;
+            recordingWindow.StopRequested += (_, _) =>
+            {
+                try
+                {
+                    File.WriteAllText(stopFile, "stop\n");
+                    StatusText.Text = "Stop requested; finalizing WAV...";
+                    Log("Graceful stop requested for audio recorder.");
+                }
+                catch (Exception stopEx)
+                {
+                    Log("Could not write stop file: " + stopEx.Message);
+                }
+            };
             recordingWindow.Show();
 
             var psi = new ProcessStartInfo(audioExe, string.Join(" ", args))
@@ -857,6 +874,9 @@ public partial class MainWindow : Window
                 CreateNoWindow = true
             };
             using var proc = new Process { StartInfo = psi };
+            _listenProcess = proc;
+            ListenButton.IsEnabled = false;
+
             proc.OutputDataReceived += (_, ev) => { if (!string.IsNullOrWhiteSpace(ev.Data)) Dispatcher.Invoke(() => Log(ev.Data)); };
             proc.ErrorDataReceived += (_, ev) => { if (!string.IsNullOrWhiteSpace(ev.Data)) Dispatcher.Invoke(() => Log("ERR: " + ev.Data)); };
             proc.Start();
@@ -878,6 +898,8 @@ public partial class MainWindow : Window
         finally
         {
             recordingWindow?.CloseSafely();
+            _listenProcess = null;
+            ListenButton.IsEnabled = true;
         }
     }
 
