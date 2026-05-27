@@ -638,6 +638,20 @@ public partial class MainWindow : Window
         MessageBox.Show("No audio WAV has been recorded yet.", "No WAV", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
+    private void OpenSessionsFolderButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            EnsureSessionsDir();
+            Process.Start(new ProcessStartInfo(_config.SessionsDir) { UseShellExecute = true });
+            StatusText.Text = "Opened sessions folder.";
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Open Sessions Folder failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private static void TryKillProcess(Process? process)
     {
         try

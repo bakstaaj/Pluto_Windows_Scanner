@@ -141,6 +141,7 @@
                 </StackPanel>
 <Button x:Name="ListenButton" Content="Listen / Record Selected" Click="ListenButton_Click" />
                                 <Button x:Name="OpenLastWavButton" Content="Open Last WAV" Click="OpenLastWavButton_Click" />
+                                <Button x:Name="OpenSessionsFolderButton" Content="Open Sessions Folder" Click="OpenSessionsFolderButton_Click" />
                                 <Button x:Name="ExportChirpButton" Content="Export CHIRP CSV" Click="ExportChirpButton_Click" />
                                 <Button x:Name="OpenLastCsvButton" Content="Open Last CSV" Click="OpenLastCsvButton_Click" />
                                 <TextBlock x:Name="StatusText" Text="Ready" Margin="16,8" Foreground="{StaticResource MutedTextBrush}" />
