@@ -23,6 +23,7 @@ namespace PlutoWindowsScannerGui;
 
 public partial class MainWindow : Window
 {
+    private string? _lastAudioWav;
     private readonly ObservableCollection<ActiveChannel> ActiveChannels = new();
     private readonly List<BandDefinition> Bands = new();
     private readonly List<List<ScanPoint>> WaterfallHistory = new();
@@ -626,6 +627,17 @@ public partial class MainWindow : Window
         MessageBox.Show("No scan CSV has been created yet.", "No CSV", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
+    private void OpenLastWavButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!string.IsNullOrWhiteSpace(_lastAudioWav) && File.Exists(_lastAudioWav))
+        {
+            Process.Start(new ProcessStartInfo(_lastAudioWav) { UseShellExecute = true });
+            return;
+        }
+
+        MessageBox.Show("No audio WAV has been recorded yet.", "No WAV", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
     private static void TryKillProcess(Process? process)
     {
         try
@@ -679,6 +691,7 @@ public partial class MainWindow : Window
         string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
         string wav = IoPath.Combine(_config.SessionsDir, $"listen_{selected.FrequencyHz}_{timestamp}.wav");
         string csv = IoPath.Combine(_config.SessionsDir, "audio_log.csv");
+        _lastAudioWav = wav;
 
         var args = new List<string>
         {
