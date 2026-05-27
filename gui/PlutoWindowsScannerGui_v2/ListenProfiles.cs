@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Windows;
 using System.Windows.Controls;
 
 namespace PlutoWindowsScannerGui;
@@ -301,4 +302,43 @@ public partial class MainWindow
             args.AddRange(profile.ExtraArgs.Where(a => !string.IsNullOrWhiteSpace(a)));
         }
     }
+    private void ReloadListenProfilesButton_Click(object sender, RoutedEventArgs e)
+    {
+        InitializeListenProfilesFromConfig();
+        Debug.WriteLine($"Listen profiles reloaded: {FindListenProfilesPath()}");
+    }
+
+    private void OpenListenProfilesJsonButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            string path = FindListenProfilesPath();
+            string? dir = Path.GetDirectoryName(path);
+
+            if (!string.IsNullOrWhiteSpace(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+
+            if (!File.Exists(path))
+            {
+                File.WriteAllText(path, "{\n  \"profiles\": []\n}\n");
+            }
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = path,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"Could not open listen profiles JSON:\n{ex.Message}",
+                "Listen Profiles",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+    }
+
 }

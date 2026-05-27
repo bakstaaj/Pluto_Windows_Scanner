@@ -9,7 +9,7 @@
       "fm_demod_rate_hz": 100000,
       "audio_lowpass_hz": 3000,
       "audio_highpass_hz": 150,
-      "volume": 0.45,
+      "volume": 0.40,
       "squelch": "off"
     },
     {

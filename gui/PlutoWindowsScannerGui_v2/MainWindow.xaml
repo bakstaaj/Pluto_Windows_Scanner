@@ -128,6 +128,16 @@
                         <ComboBoxItem Content="Broadcast FM WBFM"/>
                         <ComboBoxItem Content="Digital Detect Only"/>
                     </ComboBox>
+                    <Button x:Name="ReloadListenProfilesButton"
+                            Content="Reload"
+                            Margin="8,0,0,0"
+                            Click="ReloadListenProfilesButton_Click"
+                            ToolTip="Reload configs/listen_profiles.json" />
+                    <Button x:Name="OpenListenProfilesJsonButton"
+                            Content="Open JSON"
+                            Margin="6,0,0,0"
+                            Click="OpenListenProfilesJsonButton_Click"
+                            ToolTip="Open configs/listen_profiles.json" />
                 </StackPanel>
 <Button x:Name="ListenButton" Content="Listen / Record Selected" Click="ListenButton_Click" />
                                 <Button x:Name="ExportChirpButton" Content="Export CHIRP CSV" Click="ExportChirpButton_Click" />
