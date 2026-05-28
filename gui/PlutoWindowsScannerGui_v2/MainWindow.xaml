@@ -145,112 +145,223 @@
                     </Grid.RowDefinitions>
 
                                           <Expander x:Name="ScanControlsExpander" Grid.Row="0" Header="Scan Setup" IsExpanded="True" Expanded="ScannerSectionExpander_Changed" Collapsed="ScannerSectionExpander_Changed">
-<GroupBox Grid.Row="0" Header="Scan Controls" Background="{StaticResource PanelBrush}">
-                        <StackPanel>
-                            <WrapPanel VerticalAlignment="Center">
-                                <Label Content="Mode" />
-                                <ComboBox x:Name="ScanModeCombo" SelectionChanged="ScanModeCombo_SelectionChanged">
-                                    <ComboBoxItem Content="Standard Band" IsSelected="True" />
-                                    <ComboBoxItem Content="Frequency Range" />
-                                    <ComboBoxItem Content="Single Frequency" />
-                                </ComboBox>
-                                <Label Content="Band" />
-                                <ComboBox x:Name="BandCombo" DisplayMemberPath="Name" SelectionChanged="BandCombo_SelectionChanged" MinWidth="260" />
-                                <Label Content="Single Hz" />
-                                <TextBox x:Name="SingleFreqText" Text="162550000" />
-                                <Label Content="Start Hz" />
-                                <TextBox x:Name="StartFreqText" Text="162400000" />
-                                <Label Content="Stop Hz" />
-                                <TextBox x:Name="StopFreqText" Text="162550000" />
-                                <Label Content="Step Hz" />
-                                <TextBox x:Name="StepHzText" Text="25000" />
-                            </WrapPanel>
-                            <WrapPanel VerticalAlignment="Center">
-                                <Label Content="URI" />
-                                <TextBox x:Name="UriText" Text="ip:192.168.2.1" MinWidth="145" />
-                                <Label Content="Rate" />
-                                <TextBox x:Name="RateText" Text="1000000" />
-                                <Label Content="RF BW" />
-                                <TextBox x:Name="BwText" Text="1000000" />
-                                <Label Content="RX Mode" />
-                                <ComboBox x:Name="RxModeCombo">
-                                    <ComboBoxItem Content="auto" IsSelected="True" />
-                                    <ComboBoxItem Content="single" />
-                                    <ComboBoxItem Content="dual" />
-                                </ComboBox>
-                                <Label Content="RX Combine" />
-                                <ComboBox x:Name="RxCombineCombo">
-                                    <ComboBoxItem Content="max" IsSelected="True" />
-                                    <ComboBoxItem Content="average" />
-                                    <ComboBoxItem Content="separate" />
-                                </ComboBox>
-                                <Label Content="Squelch / Threshold dBFS" />
-                                <TextBox x:Name="SquelchText" Text="-65" />
-                                <CheckBox x:Name="VerboseCheck" Content="Verbose" Margin="12,6" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}" />
-                            </WrapPanel>
-                            <WrapPanel VerticalAlignment="Center">
-                                <Button x:Name="StartScanButton" Visibility="Collapsed" Content="Start Scan" Click="StartScanButton_Click" FontWeight="SemiBold" />
-                                <Button x:Name="StopScanButton" Visibility="Collapsed" Content="Stop" Click="StopScanButton_Click" IsEnabled="False" />
-                                <CheckBox x:Name="RepeatScanCheck" Content="Repeat" Margin="12,6" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}" />
-                                <Label Content="Delay sec" />
-                                <TextBox x:Name="RepeatDelayText" Text="2" Width="52" />
-                                <Button x:Name="ClearActiveButton" Visibility="Collapsed" Content="Clear List" Click="ClearActiveButton_Click" />
-                                <Button x:Name="UseSelectedForSingleButton" Visibility="Collapsed" Content="Use Selected for Single Hz" Click="UseSelectedForSingleButton_Click" />
-                                
-                <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
-                    <TextBlock Text="Listen Profile:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                    <ComboBox x:Name="ListenProfileComboBox" Width="190" SelectedIndex="0">
-                        <ComboBoxItem Content="Auto by Mode"/>
-                        <ComboBoxItem Content="NOAA/NFM Clean Normal"/>
-                        <ComboBoxItem Content="NOAA/NFM Clean Invert-Q"/>
-                        <ComboBoxItem Content="Ham FM NFM"/>
-                        <ComboBoxItem Content="Airband AM"/>
-                        <ComboBoxItem Content="Broadcast FM WBFM"/>
-                        <ComboBoxItem Content="Digital Detect Only"/>
-                    </ComboBox>
-                    <Button x:Name="ReloadListenProfilesButton"
-                            Visibility="Collapsed" Content="Reload"
-                            Margin="8,0,0,0"
-                            Click="ReloadListenProfilesButton_Click"
-                            ToolTip="Reload configs/listen_profiles.json" />
-                    <Button x:Name="OpenListenProfilesJsonButton"
-                            Visibility="Collapsed" Content="Open JSON"
-                            Margin="6,0,0,0"
-                            Click="OpenListenProfilesJsonButton_Click"
-                            ToolTip="Open configs/listen_profiles.json" />
-                </StackPanel>
-<Button x:Name="ListenButton" Visibility="Collapsed" Content="Listen / Record Selected" Click="ListenButton_Click" />
-                                <Button x:Name="OpenLastWavButton" Visibility="Collapsed" Content="Open Last WAV" Click="OpenLastWavButton_Click" />
-                                <Button x:Name="DeleteLastWavButton" Visibility="Collapsed" Content="Delete Last WAV" Click="DeleteLastWavButton_Click" />
-                                <Button x:Name="OpenSessionsFolderButton" Visibility="Collapsed" Content="Open Sessions Folder" Click="OpenSessionsFolderButton_Click" />
-                                <Button x:Name="ExportChirpButton" Visibility="Collapsed" Content="Export CHIRP CSV" Click="ExportChirpButton_Click" />
-                                <Button x:Name="OpenLastCsvButton" Visibility="Collapsed" Content="Open Last CSV" Click="OpenLastCsvButton_Click" />
-                                <TextBlock Text="Ready" Margin="16,8" Foreground="{StaticResource MutedTextBrush}" />
-                            </WrapPanel>
-                            <WrapPanel VerticalAlignment="Center">
-                                <Label Content="Live Center Hz" />
-                                <TextBox x:Name="LiveCenterFreqText" Text="162550000" Width="110" />
-                                <Label Content="FFT" />
-                                <TextBox x:Name="LiveFftText" Text="512" Width="70" />
-                                <Label Content="Avg" />
-                                <TextBox x:Name="LiveAvgText" Text="2" Width="52" />
-                                <Label Content="Interval ms" />
-                                <TextBox x:Name="LiveIntervalText" Text="500" Width="64" />
-                                <Label Content="Gain Mode" />
-                                <ComboBox x:Name="LiveGainModeCombo" Width="110">
-                                    <ComboBoxItem Content="slow_attack" IsSelected="True" />
-                                    <ComboBoxItem Content="fast_attack" />
-                                    <ComboBoxItem Content="manual" />
-                                </ComboBox>
-                                <Label Content="Gain dB" />
-                                <TextBox x:Name="LiveGainDbText" Text="" Width="52" />
-                                <Button x:Name="UseSelectedForLiveButton" Visibility="Collapsed" Content="Use Selected" Click="UseSelectedForLiveButton_Click" />
-                                <Button x:Name="StartLiveSpectrumButton" Visibility="Collapsed" Content="Start Live Spectrum" Click="StartLiveSpectrumButton_Click" FontWeight="SemiBold" />
-                                <Button x:Name="StopLiveSpectrumButton" Visibility="Collapsed" Content="Stop Live" Click="StopLiveSpectrumButton_Click" IsEnabled="False" />
-                                <TextBlock x:Name="LiveSpectrumStatusText" Text="Live spectrum idle" Margin="16,8" Foreground="{StaticResource MutedTextBrush}" />
-                            </WrapPanel>
-                        </StackPanel>
-                    </GroupBox>
+<GroupBox Header="Scan Setup" Background="{StaticResource PanelBrush}">
+                          <Grid Margin="2">
+                              <Grid.ColumnDefinitions>
+                                  <ColumnDefinition Width="*" />
+                                  <ColumnDefinition Width="*" />
+                              </Grid.ColumnDefinitions>
+                              <Grid.RowDefinitions>
+                                  <RowDefinition Height="Auto" />
+                                  <RowDefinition Height="Auto" />
+                                  <RowDefinition Height="Auto" />
+                              </Grid.RowDefinitions>
+
+                              <GroupBox Grid.Row="0" Grid.Column="0" Header="Scan Target" Background="{StaticResource PanelBrush}">
+                                  <Grid Margin="4">
+                                      <Grid.ColumnDefinitions>
+                                          <ColumnDefinition Width="120" />
+                                          <ColumnDefinition Width="*" />
+                                          <ColumnDefinition Width="100" />
+                                          <ColumnDefinition Width="*" />
+                                      </Grid.ColumnDefinitions>
+                                      <Grid.RowDefinitions>
+                                          <RowDefinition Height="Auto" />
+                                          <RowDefinition Height="Auto" />
+                                          <RowDefinition Height="Auto" />
+                                      </Grid.RowDefinitions>
+
+                                      <Label Grid.Row="0" Grid.Column="0" Content="Mode" />
+                                      <ComboBox Grid.Row="0" Grid.Column="1" x:Name="ScanModeCombo" SelectionChanged="ScanModeCombo_SelectionChanged" MinWidth="180">
+                                          <ComboBoxItem Content="Standard Band" IsSelected="True" />
+                                          <ComboBoxItem Content="Frequency Range" />
+                                          <ComboBoxItem Content="Single Frequency" />
+                                      </ComboBox>
+
+                                      <Label Grid.Row="0" Grid.Column="2" Content="Band" />
+                                      <ComboBox Grid.Row="0" Grid.Column="3" x:Name="BandCombo" DisplayMemberPath="Name" SelectionChanged="BandCombo_SelectionChanged" MinWidth="240" />
+
+                                      <Label Grid.Row="1" Grid.Column="0" Content="Single Hz" />
+                                      <TextBox Grid.Row="1" Grid.Column="1" x:Name="SingleFreqText" Text="162550000" MinWidth="150" />
+
+                                      <Label Grid.Row="1" Grid.Column="2" Content="Step Hz" />
+                                      <TextBox Grid.Row="1" Grid.Column="3" x:Name="StepHzText" Text="25000" MinWidth="110" />
+
+                                      <Label Grid.Row="2" Grid.Column="0" Content="Start Hz" />
+                                      <TextBox Grid.Row="2" Grid.Column="1" x:Name="StartFreqText" Text="162400000" MinWidth="150" />
+
+                                      <Label Grid.Row="2" Grid.Column="2" Content="Stop Hz" />
+                                      <TextBox Grid.Row="2" Grid.Column="3" x:Name="StopFreqText" Text="162550000" MinWidth="150" />
+                                  </Grid>
+                              </GroupBox>
+
+                              <GroupBox Grid.Row="0" Grid.Column="1" Header="Device / Receiver" Background="{StaticResource PanelBrush}">
+                                  <Grid Margin="4">
+                                      <Grid.ColumnDefinitions>
+                                          <ColumnDefinition Width="120" />
+                                          <ColumnDefinition Width="*" />
+                                          <ColumnDefinition Width="115" />
+                                          <ColumnDefinition Width="*" />
+                                      </Grid.ColumnDefinitions>
+                                      <Grid.RowDefinitions>
+                                          <RowDefinition Height="Auto" />
+                                          <RowDefinition Height="Auto" />
+                                          <RowDefinition Height="Auto" />
+                                      </Grid.RowDefinitions>
+
+                                      <Label Grid.Row="0" Grid.Column="0" Content="URI" />
+                                      <TextBox Grid.Row="0" Grid.Column="1" x:Name="UriText" Text="ip:192.168.2.1" MinWidth="150" />
+
+                                      <Label Grid.Row="0" Grid.Column="2" Content="Rate Hz" />
+                                      <TextBox Grid.Row="0" Grid.Column="3" x:Name="RateText" Text="1000000" MinWidth="120" />
+
+                                      <Label Grid.Row="1" Grid.Column="0" Content="RF BW Hz" />
+                                      <TextBox Grid.Row="1" Grid.Column="1" x:Name="BwText" Text="1000000" MinWidth="120" />
+
+                                      <Label Grid.Row="1" Grid.Column="2" Content="Threshold dBFS" />
+                                      <TextBox Grid.Row="1" Grid.Column="3" x:Name="SquelchText" Text="-65" MinWidth="80" />
+
+                                      <Label Grid.Row="2" Grid.Column="0" Content="RX Mode" />
+                                      <ComboBox Grid.Row="2" Grid.Column="1" x:Name="RxModeCombo" MinWidth="120">
+                                          <ComboBoxItem Content="auto" IsSelected="True" />
+                                          <ComboBoxItem Content="single" />
+                                          <ComboBoxItem Content="dual" />
+                                      </ComboBox>
+
+                                      <Label Grid.Row="2" Grid.Column="2" Content="RX Combine" />
+                                      <ComboBox Grid.Row="2" Grid.Column="3" x:Name="RxCombineCombo" MinWidth="120">
+                                          <ComboBoxItem Content="max" IsSelected="True" />
+                                          <ComboBoxItem Content="average" />
+                                          <ComboBoxItem Content="separate" />
+                                      </ComboBox>
+                                  </Grid>
+                              </GroupBox>
+
+                              <GroupBox Grid.Row="1" Grid.Column="0" Header="Scan Behavior" Background="{StaticResource PanelBrush}">
+                                  <Grid Margin="4">
+                                      <Grid.ColumnDefinitions>
+                                          <ColumnDefinition Width="120" />
+                                          <ColumnDefinition Width="*" />
+                                          <ColumnDefinition Width="120" />
+                                          <ColumnDefinition Width="*" />
+                                      </Grid.ColumnDefinitions>
+                                      <Grid.RowDefinitions>
+                                          <RowDefinition Height="Auto" />
+                                          <RowDefinition Height="Auto" />
+                                      </Grid.RowDefinitions>
+
+                                      <CheckBox Grid.Row="0" Grid.Column="0" x:Name="VerboseCheck" Content="Verbose log" Margin="6" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}" />
+                                      <CheckBox Grid.Row="0" Grid.Column="1" x:Name="RepeatScanCheck" Content="Repeat scan" Margin="6" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}" />
+
+                                      <Label Grid.Row="0" Grid.Column="2" Content="Delay sec" />
+                                      <TextBox Grid.Row="0" Grid.Column="3" x:Name="RepeatDelayText" Text="2" Width="80" HorizontalAlignment="Left" />
+
+                                      <TextBlock Grid.Row="1" Grid.ColumnSpan="4"
+                                                 Text="Actions are available from the Scan, Listen / Record, Live Spectrum, and View menus."
+                                                 Foreground="{StaticResource MutedTextBrush}"
+                                                 Margin="6,8,0,0"
+                                                 TextWrapping="Wrap" />
+                                  </Grid>
+                              </GroupBox>
+
+                              <GroupBox Grid.Row="1" Grid.Column="1" Header="Listen Profile" Background="{StaticResource PanelBrush}">
+                                  <Grid Margin="4">
+                                      <Grid.ColumnDefinitions>
+                                          <ColumnDefinition Width="120" />
+                                          <ColumnDefinition Width="*" />
+                                      </Grid.ColumnDefinitions>
+                                      <Grid.RowDefinitions>
+                                          <RowDefinition Height="Auto" />
+                                          <RowDefinition Height="Auto" />
+                                      </Grid.RowDefinitions>
+
+                                      <Label Grid.Row="0" Grid.Column="0" Content="Profile" />
+                                      <ComboBox Grid.Row="0" Grid.Column="1" x:Name="ListenProfileComboBox" SelectedIndex="0" MinWidth="260">
+                                          <ComboBoxItem Content="Auto by Mode"/>
+                                          <ComboBoxItem Content="NOAA/NFM Clean Normal"/>
+                                          <ComboBoxItem Content="NOAA/NFM Clean Invert-Q"/>
+                                          <ComboBoxItem Content="Ham FM NFM"/>
+                                          <ComboBoxItem Content="Airband AM"/>
+                                          <ComboBoxItem Content="Broadcast FM WBFM"/>
+                                          <ComboBoxItem Content="Digital Detect Only"/>
+                                      </ComboBox>
+
+                                      <TextBlock Grid.Row="1" Grid.ColumnSpan="2"
+                                                 Text="Profiles are loaded from configs\listen_profiles.json."
+                                                 Foreground="{StaticResource MutedTextBrush}"
+                                                 Margin="6,8,0,0"
+                                                 TextWrapping="Wrap" />
+                                  </Grid>
+                              </GroupBox>
+
+                              <GroupBox Grid.Row="2" Grid.ColumnSpan="2" Header="Live Spectrum" Background="{StaticResource PanelBrush}">
+                                  <Grid Margin="4">
+                                      <Grid.ColumnDefinitions>
+                                          <ColumnDefinition Width="120" />
+                                          <ColumnDefinition Width="*" />
+                                          <ColumnDefinition Width="80" />
+                                          <ColumnDefinition Width="*" />
+                                          <ColumnDefinition Width="90" />
+                                          <ColumnDefinition Width="*" />
+                                          <ColumnDefinition Width="105" />
+                                          <ColumnDefinition Width="*" />
+                                      </Grid.ColumnDefinitions>
+                                      <Grid.RowDefinitions>
+                                          <RowDefinition Height="Auto" />
+                                          <RowDefinition Height="Auto" />
+                                      </Grid.RowDefinitions>
+
+                                      <Label Grid.Row="0" Grid.Column="0" Content="Center Hz" />
+                                      <TextBox Grid.Row="0" Grid.Column="1" x:Name="LiveCenterFreqText" Text="162550000" MinWidth="130" />
+
+                                      <Label Grid.Row="0" Grid.Column="2" Content="FFT" />
+                                      <TextBox Grid.Row="0" Grid.Column="3" x:Name="LiveFftText" Text="512" MinWidth="70" />
+
+                                      <Label Grid.Row="0" Grid.Column="4" Content="Average" />
+                                      <TextBox Grid.Row="0" Grid.Column="5" x:Name="LiveAvgText" Text="2" MinWidth="70" />
+
+                                      <Label Grid.Row="0" Grid.Column="6" Content="Interval ms" />
+                                      <TextBox Grid.Row="0" Grid.Column="7" x:Name="LiveIntervalText" Text="500" MinWidth="80" />
+
+                                      <Label Grid.Row="1" Grid.Column="0" Content="Gain Mode" />
+                                      <ComboBox Grid.Row="1" Grid.Column="1" x:Name="LiveGainModeCombo" MinWidth="130">
+                                          <ComboBoxItem Content="slow_attack" IsSelected="True" />
+                                          <ComboBoxItem Content="fast_attack" />
+                                          <ComboBoxItem Content="manual" />
+                                      </ComboBox>
+
+                                      <Label Grid.Row="1" Grid.Column="2" Content="Gain dB" />
+                                      <TextBox Grid.Row="1" Grid.Column="3" x:Name="LiveGainDbText" Text="" MinWidth="70" />
+
+                                      <TextBlock Grid.Row="1" Grid.Column="4" Grid.ColumnSpan="4"
+                                                 x:Name="LiveSpectrumStatusText"
+                                                 Text="Live spectrum idle"
+                                                 Foreground="{StaticResource MutedTextBrush}"
+                                                 VerticalAlignment="Center"
+                                                 Margin="8,0,0,0" />
+                                  </Grid>
+                              </GroupBox>
+
+                              <!-- Hidden compatibility buttons: menus call these handlers and code-behind still references these named controls. -->
+                              <StackPanel Grid.Row="3" Grid.ColumnSpan="2" Visibility="Collapsed">
+                                  <Button x:Name="StartScanButton" Content="Start Scan" Click="StartScanButton_Click" />
+                                  <Button x:Name="StopScanButton" Content="Stop" Click="StopScanButton_Click" IsEnabled="False" />
+                                  <Button x:Name="ClearActiveButton" Content="Clear List" Click="ClearActiveButton_Click" />
+                                  <Button x:Name="UseSelectedForSingleButton" Content="Use Selected for Single Hz" Click="UseSelectedForSingleButton_Click" />
+                                  <Button x:Name="ReloadListenProfilesButton" Content="Reload" Click="ReloadListenProfilesButton_Click" />
+                                  <Button x:Name="OpenListenProfilesJsonButton" Content="Open JSON" Click="OpenListenProfilesJsonButton_Click" />
+                                  <Button x:Name="ListenButton" Content="Listen / Record Selected" Click="ListenButton_Click" />
+                                  <Button x:Name="OpenLastWavButton" Content="Open Last WAV" Click="OpenLastWavButton_Click" />
+                                  <Button x:Name="DeleteLastWavButton" Content="Delete Last WAV" Click="DeleteLastWavButton_Click" />
+                                  <Button x:Name="OpenSessionsFolderButton" Content="Open Sessions Folder" Click="OpenSessionsFolderButton_Click" />
+                                  <Button x:Name="ExportChirpButton" Content="Export CHIRP CSV" Click="ExportChirpButton_Click" />
+                                  <Button x:Name="OpenLastCsvButton" Content="Open Last CSV" Click="OpenLastCsvButton_Click" />
+                                  <Button x:Name="UseSelectedForLiveButton" Content="Use Selected" Click="UseSelectedForLiveButton_Click" />
+                                  <Button x:Name="StartLiveSpectrumButton" Content="Start Live Spectrum" Click="StartLiveSpectrumButton_Click" />
+                                  <Button x:Name="StopLiveSpectrumButton" Content="Stop Live" Click="StopLiveSpectrumButton_Click" IsEnabled="False" />
+                              </StackPanel>
+                          </Grid>
+                      </GroupBox>
                       </Expander>
 
                                           <Expander x:Name="ChartsExpander" Grid.Row="1" Header="Spectrum and Waterfall" IsExpanded="True" Expanded="ScannerSectionExpander_Changed" Collapsed="ScannerSectionExpander_Changed">
