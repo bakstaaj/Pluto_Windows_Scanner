@@ -1030,8 +1030,184 @@ public partial class MainWindow : Window
     }
 
 
-    private void SpectrumCanvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    
+    private void StartListenFromSingleHzAfterChartDoubleClick()
     {
+        try
+        {
+            if (_listenProcess != null && !_listenProcess.HasExited)
+            {
+                StatusText.Text = "Recording already in progress.";
+                return;
+            }
+
+            // Force ListenButton_Click to use the Single Hz fallback instead of an old active-row selection.
+            try
+            {
+                ActiveChannelsGrid.SelectedItem = null;
+            }
+            catch
+            {
+                // Best effort only.
+            }
+
+            if (!long.TryParse(SingleFreqText.Text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out long singleHz) || singleHz <= 0)
+            {
+                StatusText.Text = "Double-click ignored: Single Hz is not valid.";
+                return;
+            }
+
+            StatusText.Text = $"Double-click recording from {singleHz / 1000000.0:F6} MHz...";
+            ListenButton_Click(this, new RoutedEventArgs());
+        }
+        catch (Exception ex)
+        {
+            Log("Double-click listen failed: " + ex.Message);
+            MessageBox.Show(ex.Message, "Double-click listen failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void QueueListenFromChartDoubleClick(MouseButtonEventArgs e)
+    {
+        if (e.ClickCount < 2)
+        {
+            return;
+        }
+
+        // Let the existing chart-click handler finish updating Single Hz first.
+        Dispatcher.BeginInvoke(
+            new Action(StartListenFromSingleHzAfterChartDoubleClick),
+            DispatcherPriority.Background);
+    }
+
+
+    private void SpectrumCanvas_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (sender is Canvas canvas)
+        {
+            UpdateChartHoverFrequency(canvas, e, "Spectrum");
+        }
+    }
+
+    private void WaterfallCanvas_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (sender is Canvas canvas)
+        {
+            UpdateChartHoverFrequency(canvas, e, "Waterfall");
+        }
+    }
+
+    private void ChartCanvas_MouseLeave(object sender, MouseEventArgs e)
+    {
+        if (sender is Canvas canvas)
+        {
+            RemoveChartHoverOverlay(canvas);
+        }
+    }
+
+
+    private void ShowChartHoverOverlay(Canvas canvas, Point pos, string text)
+    {
+        TextBlock? label = null;
+
+        foreach (var child in canvas.Children)
+        {
+            if (child is TextBlock tb &&
+                string.Equals(tb.Tag as string, "ChartHoverFrequencyOverlay", StringComparison.Ordinal))
+            {
+                label = tb;
+                break;
+            }
+        }
+
+        if (label == null)
+        {
+            label = new TextBlock
+            {
+                Tag = "ChartHoverFrequencyOverlay",
+                Foreground = Brushes.White,
+                Background = new SolidColorBrush(Color.FromArgb(96, 0, 0, 0)),
+                FontSize = 12,
+                FontWeight = FontWeights.SemiBold,
+                Padding = new Thickness(6, 2, 6, 2),
+                IsHitTestVisible = false
+            };
+
+            canvas.Children.Add(label);
+        }
+
+        label.Text = text;
+
+        double left = pos.X + 12;
+        double top = pos.Y + 12;
+
+        label.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        double labelWidth = Math.Max(80, label.DesiredSize.Width);
+        double labelHeight = Math.Max(20, label.DesiredSize.Height);
+
+        if (left + labelWidth > canvas.ActualWidth)
+        {
+            left = pos.X - labelWidth - 12;
+        }
+
+        if (top + labelHeight > canvas.ActualHeight)
+        {
+            top = pos.Y - labelHeight - 12;
+        }
+
+        Canvas.SetLeft(label, Math.Clamp(left, 0.0, Math.Max(0.0, canvas.ActualWidth - labelWidth)));
+        Canvas.SetTop(label, Math.Clamp(top, 0.0, Math.Max(0.0, canvas.ActualHeight - labelHeight)));
+        Panel.SetZIndex(label, 9999);
+    }
+
+    private void RemoveChartHoverOverlay(Canvas canvas)
+    {
+        for (int i = canvas.Children.Count - 1; i >= 0; i--)
+        {
+            if (canvas.Children[i] is TextBlock tb &&
+                string.Equals(tb.Tag as string, "ChartHoverFrequencyOverlay", StringComparison.Ordinal))
+            {
+                canvas.Children.RemoveAt(i);
+            }
+        }
+    }
+
+    private void UpdateChartHoverFrequency(Canvas canvas, MouseEventArgs e, string sourceName)
+    {
+        try
+        {
+            if (LastScanPoints.Count == 0 || canvas.ActualWidth <= 2 || canvas.ActualHeight <= 2)
+            {
+                RemoveChartHoverOverlay(canvas);
+                return;
+            }
+
+            Point pos = e.GetPosition(canvas);
+            double x = Math.Clamp(pos.X, 0.0, Math.Max(1.0, canvas.ActualWidth));
+
+            double minHz = LastScanPoints.Min(p => (double)p.FrequencyHz);
+            double maxHz = LastScanPoints.Max(p => (double)p.FrequencyHz);
+
+            double freqHz = minHz;
+            if (maxHz > minHz)
+            {
+                double fraction = x / Math.Max(1.0, canvas.ActualWidth);
+                freqHz = minHz + ((maxHz - minHz) * fraction);
+            }
+
+            string label = $"{freqHz / 1000000.0:F6} MHz";
+            ShowChartHoverOverlay(canvas, pos, label);
+        }
+        catch
+        {
+            RemoveChartHoverOverlay(canvas);
+        }
+    }
+
+private void SpectrumCanvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        QueueListenFromChartDoubleClick(e);
+
         if (TryGetClickedChartFrequencyHz(SpectrumCanvas, e, out long frequencyHz))
         {
             ApplyClickedChartFrequency(frequencyHz, "spectrum");
@@ -1040,6 +1216,8 @@ public partial class MainWindow : Window
 
     private void WaterfallCanvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        QueueListenFromChartDoubleClick(e);
+
         if (TryGetClickedChartFrequencyHz(WaterfallCanvas, e, out long frequencyHz))
         {
             ApplyClickedChartFrequency(frequencyHz, "waterfall");
@@ -1209,8 +1387,62 @@ public partial class MainWindow : Window
         }
     }
 
+
+    private void StopScanBeforeRecording()
+    {
+        try
+        {
+            bool hadScan = false;
+
+            try
+            {
+                if (_scanLoopCts != null)
+                {
+                    hadScan = true;
+                    _scanLoopCts.Cancel();
+                }
+            }
+            catch
+            {
+                // Best effort only.
+            }
+
+            if (_scanProcess != null)
+            {
+                hadScan = true;
+
+                try
+                {
+                    if (!_scanProcess.HasExited)
+                    {
+                        _scanProcess.Kill(entireProcessTree: true);
+                    }
+                }
+                catch
+                {
+                    // Best effort only.
+                }
+            }
+
+            StopEstimatedScanProgress(false);
+
+            if (hadScan)
+            {
+                ScanProgressText.Text = $"Scan stopped for recording: {_scanProgressCurrent} / {_scanProgressTotal}";
+                StatusText.Text = "Scanner stopped; starting recorder.";
+                Log("Scanner stopped before starting audio recording.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log("Stop scan before recording failed: " + ex.Message);
+        }
+    }
+
     private void ListenButton_Click(object sender, RoutedEventArgs e)
     {
+        StopScanBeforeRecording();
+
         if (ActiveChannelsGrid.SelectedItem is ActiveChannel selected)
         {
             _ = ListenAsync(selected);
@@ -1266,6 +1498,8 @@ public partial class MainWindow : Window
 
     private async Task ListenAsync(ActiveChannel selected)
     {
+        StopScanBeforeRecording();
+
         SaveUiToConfig();
         EnsureSessionsDir();
 

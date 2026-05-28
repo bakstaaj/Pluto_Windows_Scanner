@@ -372,13 +372,13 @@
                         </Grid.ColumnDefinitions>
                         <GroupBox Grid.Column="0" Header="Frequency Spectrum" Background="{StaticResource PanelBrush}">
                             <Grid>
-                                <Canvas x:Name="SpectrumCanvas" Background="#020617" SizeChanged="ChartCanvas_SizeChanged" MouseLeftButtonDown="SpectrumCanvas_MouseLeftButtonDown" ClipToBounds="True" />
+                                <Canvas x:Name="SpectrumCanvas" Background="#020617" SizeChanged="ChartCanvas_SizeChanged" MouseLeftButtonDown="SpectrumCanvas_MouseLeftButtonDown" ClipToBounds="True" MouseMove="SpectrumCanvas_MouseMove" MouseLeave="ChartCanvas_MouseLeave" />
                                 <TextBlock x:Name="SpectrumCaption" Text="Run a scan or start live spectrum to populate this chart" Foreground="#94a3b8" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Grid>
                         </GroupBox>
                         <GroupBox Grid.Column="1" Header="Waterfall History" Background="{StaticResource PanelBrush}">
                             <Grid>
-                                <Canvas x:Name="WaterfallCanvas" Background="#020617" SizeChanged="ChartCanvas_SizeChanged" MouseLeftButtonDown="WaterfallCanvas_MouseLeftButtonDown" ClipToBounds="True" />
+                                <Canvas x:Name="WaterfallCanvas" Background="#020617" SizeChanged="ChartCanvas_SizeChanged" MouseLeftButtonDown="WaterfallCanvas_MouseLeftButtonDown" ClipToBounds="True" MouseMove="WaterfallCanvas_MouseMove" MouseLeave="ChartCanvas_MouseLeave" />
                                 <TextBlock x:Name="WaterfallCaption" Text="Waterfall rows update from scans and live spectrum frames" Foreground="#94a3b8" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Grid>
                         </GroupBox>
@@ -518,7 +518,6 @@
             </StatusBarItem>
 
             <Separator />
-
             <StatusBarItem>
                 <TextBlock x:Name="StatusText"
                            Text="Ready"
