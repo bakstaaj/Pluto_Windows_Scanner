@@ -1295,6 +1295,82 @@ public partial class MainWindow : Window
         args.Add(value);
     }
 
+
+    private async void LiveShiftDownButton_Click(object sender, RoutedEventArgs e)
+    {
+        await ShiftLiveSpectrumByHalfSpanAsync(-1);
+    }
+
+    private async void LiveShiftUpButton_Click(object sender, RoutedEventArgs e)
+    {
+        await ShiftLiveSpectrumByHalfSpanAsync(1);
+    }
+
+    private async Task ShiftLiveSpectrumByHalfSpanAsync(int direction)
+    {
+        try
+        {
+            long centerHz = ParseHzTextOrDefault(LiveCenterFreqText.Text, ParseHzTextOrDefault(SingleFreqText.Text, 162500000));
+            long spanHz = GetLiveSpectrumVisibleSpanHz();
+            long shiftHz = Math.Max(1, spanHz / 2);
+
+            long newCenterHz = centerHz + (direction < 0 ? -shiftHz : shiftHz);
+            if (newCenterHz < 1)
+            {
+                newCenterHz = 1;
+            }
+
+            LiveCenterFreqText.Text = newCenterHz.ToString(CultureInfo.InvariantCulture);
+            SingleFreqText.Text = newCenterHz.ToString(CultureInfo.InvariantCulture);
+
+            double shiftMhz = shiftHz / 1000000.0;
+            double centerMhz = newCenterHz / 1000000.0;
+            string directionText = direction < 0 ? "down" : "up";
+
+            LiveShiftStatusText.Text = $"Shifted {directionText} {shiftMhz:0.###} MHz; center {centerMhz:0.######} MHz.";
+            StatusText.Text = LiveShiftStatusText.Text;
+
+            bool liveWasRunning = false;
+            try
+            {
+                liveWasRunning = StopLiveSpectrumButton.IsEnabled;
+            }
+            catch
+            {
+                liveWasRunning = false;
+            }
+
+            if (liveWasRunning)
+            {
+                StopLiveSpectrumButton_Click(this, new RoutedEventArgs());
+                await Task.Delay(250);
+                StartLiveSpectrumButton_Click(this, new RoutedEventArgs());
+            }
+        }
+        catch (Exception ex)
+        {
+            Log("Live spectrum shift failed: " + ex.Message);
+            MessageBox.Show(ex.Message, "Live spectrum shift failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private long GetLiveSpectrumVisibleSpanHz()
+    {
+        // The live spectrum window spans approximately one SDR sample-rate width.
+        long rateHz = ParseHzTextOrDefault(RateText.Text, 1000000);
+        return Math.Clamp(rateHz, 1000, 100000000);
+    }
+
+    private static long ParseHzTextOrDefault(string? text, long fallback)
+    {
+        if (long.TryParse((text ?? string.Empty).Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out long value) && value > 0)
+        {
+            return value;
+        }
+
+        return fallback;
+    }
+
     private void StartLiveSpectrumButton_Click(object sender, RoutedEventArgs e)
     {
         _ = StartLiveSpectrumAsync();

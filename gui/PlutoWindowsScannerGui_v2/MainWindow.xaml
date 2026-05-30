@@ -325,7 +325,8 @@
                                       <Grid.RowDefinitions>
                                           <RowDefinition Height="Auto" />
                                           <RowDefinition Height="Auto" />
-                                      </Grid.RowDefinitions>
+                                                                                <RowDefinition Height="Auto" />
+</Grid.RowDefinitions>
 
                                       <Label Grid.Row="0" Grid.Column="0" Content="Center Hz" />
                                       <TextBox Grid.Row="0" Grid.Column="1" x:Name="LiveCenterFreqText" Text="162550000" MinWidth="130" />
@@ -355,7 +356,27 @@
                                                  Foreground="{StaticResource MutedTextBrush}"
                                                  VerticalAlignment="Center"
                                                  Margin="8,0,0,0" />
-                                  </Grid>
+                                  
+                                      <StackPanel Grid.Row="2"
+                                                  Grid.ColumnSpan="8"
+                                                  Orientation="Horizontal"
+                                                  Margin="6,8,0,0">
+                                          <Button x:Name="LiveShiftDownButton"
+                                                  Content="Shift Down 50%"
+                                                  Click="LiveShiftDownButton_Click"
+                                                  MinWidth="120" />
+                                          <Button x:Name="LiveShiftUpButton"
+                                                  Content="Shift Up 50%"
+                                                  Click="LiveShiftUpButton_Click"
+                                                  MinWidth="120"
+                                                  Margin="8,0,0,0" />
+                                          <TextBlock x:Name="LiveShiftStatusText"
+                                                     Text="Shift uses 50% of current visible span."
+                                                     Foreground="{StaticResource MutedTextBrush}"
+                                                     VerticalAlignment="Center"
+                                                     Margin="12,0,0,0" />
+                                      </StackPanel>
+</Grid>
                               </GroupBox>
 
                               <!-- Hidden compatibility buttons: menus call these handlers and code-behind still references these named controls. -->
