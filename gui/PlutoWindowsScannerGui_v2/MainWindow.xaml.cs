@@ -169,41 +169,273 @@ public partial class MainWindow : Window
     }
 
 
-    private void AddHelpfulTooltips()
+
+    private static string NormalizeHelpLevel(string? value)
     {
-        var labelHelp = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        string level = (value ?? string.Empty).Trim();
+
+        if (string.Equals(level, "Novice", StringComparison.OrdinalIgnoreCase))
         {
-            ["Mode"] = "Choose how Pluto Scan builds the scan: a saved band, a custom frequency range, or one single frequency.",
-            ["Band"] = "Standard bands are loaded from configs\\bands.csv. Selecting a band can also apply scan detector defaults.",
+            return "Novice";
+        }
+
+        if (string.Equals(level, "Expert", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Expert";
+        }
+
+        return "Intermediate";
+    }
+
+    private string CurrentHelpLevel()
+    {
+        try
+        {
+            return NormalizeHelpLevel(ComboText(HelpLevelCombo));
+        }
+        catch
+        {
+            return NormalizeHelpLevel(_config.HelpLevel);
+        }
+    }
+
+    private Dictionary<string, string> BuildLabelHelpDictionary()
+    {
+        string level = CurrentHelpLevel();
+
+        if (level == "Novice")
+        {
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Mode"] = "Choose what kind of scan you want. Standard Band uses a saved range, Frequency Range lets you type your own start and stop, and Single Frequency checks just one channel.",
+                ["Band"] = "A saved group of frequencies, such as NOAA Weather or VHF Airband. Pick a band when you are not sure what exact frequencies to scan.",
+                ["Single Hz"] = "One exact radio frequency, written in Hz. Example: 162500000 means 162.500 MHz NOAA weather.",
+                ["Step Hz"] = "How far the scanner jumps between checks. A smaller step checks more frequencies and takes longer. A larger step is faster but can skip activity.",
+                ["Start Hz"] = "The first frequency to check in a custom scan range.",
+                ["Stop Hz"] = "The last frequency to check in a custom scan range.",
+                ["URI"] = "How the program connects to your Pluto SDR. The normal network value is ip:192.168.2.1.",
+                ["Rate Hz"] = "How much radio spectrum the Pluto samples at once. Leave this near 1000000 unless you know you need a different value.",
+                ["RF BW Hz"] = "The Pluto's radio front-end bandwidth. This is a broad hardware filter before the software detector looks for a channel.",
+                ["Threshold dBFS"] = "The signal strength level needed before the scanner considers something active. Less negative values are stricter. More negative values are more sensitive.",
+                ["RX Mode"] = "Which receiver input to use. Single uses one receiver. Dual can use both Pluto+ receivers if available. Auto lets the program decide.",
+                ["RX Combine"] = "How readings from two receivers are combined. Max usually works best because it keeps the stronger receiver reading.",
+                ["Delay sec"] = "How long to wait before repeating a scan when Repeat scan is turned on.",
+                ["Profile"] = "Controls how audio is decoded and recorded. Use Auto by Mode unless a specific profile sounds better.",
+                ["Center Hz"] = "The frequency shown in the center of the live spectrum display.",
+                ["FFT"] = "Controls spectrum detail. Higher numbers show finer detail but can update more slowly.",
+                ["Average"] = "Smooths the live spectrum. Higher numbers make the display steadier but slower to react.",
+                ["Interval ms"] = "How often the live spectrum refreshes. Lower is faster; higher uses less computer/USB time.",
+                ["Gain Mode"] = "Controls receiver gain. Slow attack is usually safe. Manual lets you choose a fixed gain.",
+                ["Gain dB"] = "Manual receiver gain value. Only matters when Gain Mode is manual.",
+                ["Repo root"] = "The main project folder on your computer.",
+                ["Sessions dir"] = "Where scan logs, recordings, and CSV files are saved.",
+                ["Bands CSV"] = "The file that contains the saved scan bands shown in the Band list.",
+                ["Listen seconds"] = "How long a recording lasts before stopping automatically.",
+                ["Default CHIRP mode"] = "The radio mode written into CHIRP export files if a band does not provide one.",
+                ["Active min SNR dB"] = "Extra check that says a signal must stand out above background noise before it is listed as active.",
+                ["Scanner channel LP Hz"] = "The width of the software detector around each checked frequency. Narrow values help avoid false hits from nearby channels.",
+                ["Scanner samples"] = "How much data to collect at each frequency. Smaller is faster; larger can be more stable.",
+                ["Scanner settle ms"] = "How long to pause after tuning before measuring. Smaller is faster; larger can improve accuracy.",
+                ["Progress overhead ms"] = "A timing adjustment that helps the progress bar match the real scan speed.",
+                ["Help Level"] = "Choose how much explanation the popups provide."
+            };
+        }
+
+        if (level == "Expert")
+        {
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Mode"] = "Scan source mode: band, custom range, or single-frequency CSV.",
+                ["Band"] = "bands.csv entry; may apply detector defaults.",
+                ["Single Hz"] = "Single scan frequency in Hz.",
+                ["Step Hz"] = "Frequency increment in Hz.",
+                ["Start Hz"] = "Range start in Hz.",
+                ["Stop Hz"] = "Range stop in Hz.",
+                ["URI"] = "libiio URI.",
+                ["Rate Hz"] = "AD9361 sampling_frequency.",
+                ["RF BW Hz"] = "AD9361 rf_bandwidth.",
+                ["Threshold dBFS"] = "Backend active threshold.",
+                ["RX Mode"] = "auto/single/dual receiver mode.",
+                ["RX Combine"] = "dual-RX combine method.",
+                ["Delay sec"] = "Repeat scan delay.",
+                ["Profile"] = "listen_profiles.json demod/audio profile.",
+                ["Center Hz"] = "Live spectrum LO center.",
+                ["FFT"] = "FFT bin count.",
+                ["Average"] = "Frame averaging count.",
+                ["Interval ms"] = "Live update interval.",
+                ["Gain Mode"] = "AD9361 gain_control_mode.",
+                ["Gain dB"] = "manual hardwaregain.",
+                ["Repo root"] = "Project root path.",
+                ["Sessions dir"] = "Output/log folder.",
+                ["Bands CSV"] = "Band definition CSV path.",
+                ["Listen seconds"] = "Recording duration.",
+                ["Default CHIRP mode"] = "Fallback CHIRP mode.",
+                ["Active min SNR dB"] = "GUI SNR confirmation threshold.",
+                ["Scanner channel LP Hz"] = "Backend narrow detector LP cutoff.",
+                ["Scanner samples"] = "Samples per frequency.",
+                ["Scanner settle ms"] = "Tune settle delay.",
+                ["Progress overhead ms"] = "Progress estimator overhead per channel.",
+                ["Help Level"] = "Tooltip verbosity."
+            };
+        }
+
+        return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Mode"] = "Choose whether to scan a saved band, a custom frequency range, or one single frequency.",
+            ["Band"] = "Standard bands are loaded from configs\\bands.csv. Selecting a band can apply scanner defaults.",
             ["Single Hz"] = "Exact frequency in Hz for single-frequency scanning or chart/waterfall click selection.",
-            ["Step Hz"] = "Spacing between scan points. For FM voice channels, 12500 or 25000 Hz is common depending on the band.",
+            ["Step Hz"] = "Spacing between scan points. Smaller steps find more detail but take longer.",
             ["Start Hz"] = "First frequency in Hz for a custom range scan.",
             ["Stop Hz"] = "Last frequency in Hz for a custom range scan.",
             ["URI"] = "IIO connection string for the Pluto SDR. Default is usually ip:192.168.2.1.",
-            ["Rate Hz"] = "SDR sample rate. Higher rates cover more bandwidth but can be slower or noisier.",
-            ["RF BW Hz"] = "AD9361 RF bandwidth. This controls analog front-end bandwidth, not the final narrow channel detector width.",
-            ["Threshold dBFS"] = "Backend active threshold. Signals above this dBFS value can be considered active.",
-            ["RX Mode"] = "Receiver selection. Use single for RX1 only, dual for RX1/RX2, or auto to use what the backend detects.",
+            ["Rate Hz"] = "SDR sample rate. Higher rates cover more bandwidth but may scan slower.",
+            ["RF BW Hz"] = "AD9361 RF bandwidth. This controls analog front-end bandwidth, not final channel width.",
+            ["Threshold dBFS"] = "Backend active threshold. Signals above this level may be considered active.",
+            ["RX Mode"] = "Receiver selection. Use single for RX1, dual for RX1/RX2, or auto to let the backend decide.",
             ["RX Combine"] = "How dual receiver measurements are combined. Max is usually best for scanning.",
-            ["Delay sec"] = "Delay between repeated scan passes when repeat scan is enabled.",
-            ["Profile"] = "Listen/record profile loaded from configs\\listen_profiles.json. Profiles control demodulation and audio filtering.",
+            ["Delay sec"] = "Delay between repeated scan passes.",
+            ["Profile"] = "Listen/record profile loaded from configs\\listen_profiles.json.",
             ["Center Hz"] = "Center frequency for the live spectrum display.",
-            ["FFT"] = "FFT bin count for live spectrum. Larger values give finer frequency detail but may update slower.",
-            ["Average"] = "Number of live spectrum frames averaged together. Higher values smooth the display.",
+            ["FFT"] = "FFT bin count. Larger values give finer frequency detail but can update slower.",
+            ["Average"] = "Number of live spectrum frames averaged together.",
             ["Interval ms"] = "Live spectrum update interval in milliseconds.",
             ["Gain Mode"] = "AD9361 gain control mode for live spectrum.",
             ["Gain dB"] = "Manual gain value when gain mode is manual.",
             ["Repo root"] = "Root folder for this Pluto Scan working copy.",
             ["Sessions dir"] = "Folder where scan CSVs, WAV recordings, and troubleshooting files are written.",
-            ["Bands CSV"] = "Path to the standard-band list. Edit configs\\bands.csv to add or tune scan ranges.",
+            ["Bands CSV"] = "Path to the standard-band list.",
             ["Listen seconds"] = "Default recording length for Listen / Record.",
             ["Default CHIRP mode"] = "Mode written to exported CHIRP CSV rows when a band-specific mode is unavailable.",
             ["Active min SNR dB"] = "GUI-side active-channel confirmation threshold above the estimated scan noise floor.",
             ["Scanner channel LP Hz"] = "Narrow detector bandwidth around the tuned center. Use about 12000 for NOAA/NFM and 15000 for airband.",
-            ["Scanner samples"] = "Samples captured per frequency. Lower values scan faster; higher values can improve measurement stability.",
-            ["Scanner settle ms"] = "Delay after tuning before measuring power. Lower values scan faster; higher values may improve accuracy.",
-            ["Progress overhead ms"] = "Estimated per-channel overhead used only for the progress bar timing estimate."
+            ["Scanner samples"] = "Samples captured per frequency. Lower values scan faster; higher values improve measurement stability.",
+            ["Scanner settle ms"] = "Delay after tuning before measuring power.",
+            ["Progress overhead ms"] = "Estimated per-channel overhead used for progress bar timing.",
+            ["Help Level"] = "Controls how detailed the hover explanations are."
         };
+    }
+
+    private Dictionary<string, string> BuildActiveChannelHeaderHelpDictionary()
+    {
+        string level = CurrentHelpLevel();
+
+        if (level == "Novice")
+        {
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Frequency"] = "The radio channel where Pluto Scan found activity.",
+                ["Frequency Hz"] = "The detected radio channel written in Hz.",
+                ["Frequency MHz"] = "The detected radio channel written in MHz, which is usually easier to read.",
+                ["MHz"] = "The detected radio channel written in MHz.",
+                ["Label"] = "The band or scan name that produced this detection.",
+                ["Mode"] = "How Pluto Scan will try to turn the radio signal into audio.",
+                ["Effective RX"] = "Which Pluto receiver path was actually used.",
+                ["RX Mode"] = "Which Pluto receiver path was used.",
+                ["RX Combine"] = "How readings from two receiver paths were combined.",
+                ["RX1"] = "Signal strength measured on receiver 1.",
+                ["RX2"] = "Signal strength measured on receiver 2.",
+                ["RX1 dBFS"] = "Signal strength measured on receiver 1. Less negative means stronger.",
+                ["RX2 dBFS"] = "Signal strength measured on receiver 2. Less negative means stronger.",
+                ["Combined"] = "The signal strength value used to decide if the channel is active.",
+                ["Combined dBFS"] = "The signal strength value used to decide if the channel is active.",
+                ["Last"] = "The most recent signal strength measured for this channel.",
+                ["Last dBFS"] = "The most recent signal strength measured for this channel.",
+                ["Peak"] = "The strongest signal seen on this channel during this session.",
+                ["Peak dBFS"] = "The strongest signal seen on this channel during this session.",
+                ["Threshold"] = "The minimum signal strength needed to count as active.",
+                ["Threshold dBFS"] = "The minimum signal strength needed to count as active.",
+                ["Active"] = "Whether this channel is currently considered active.",
+                ["Count"] = "How many times this channel has been detected active.",
+                ["Detected"] = "How many times this channel has been detected active.",
+                ["First Seen"] = "When Pluto Scan first added this channel to the list.",
+                ["Last Seen"] = "When Pluto Scan most recently saw this channel active.",
+                ["Comment"] = "Extra note, often the scan file that found this channel."
+            };
+        }
+
+        if (level == "Expert")
+        {
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Frequency"] = "Detected RF center.",
+                ["Frequency Hz"] = "Detected RF center in Hz.",
+                ["Frequency MHz"] = "Detected RF center in MHz.",
+                ["MHz"] = "Detected RF center in MHz.",
+                ["Label"] = "Band/scan label.",
+                ["Mode"] = "Demod/export mode.",
+                ["Effective RX"] = "Backend effective RX mode.",
+                ["RX Mode"] = "Backend RX mode.",
+                ["RX Combine"] = "RX combine method.",
+                ["RX1"] = "RX1 dBFS.",
+                ["RX2"] = "RX2 dBFS.",
+                ["RX1 dBFS"] = "RX1 dBFS.",
+                ["RX2 dBFS"] = "RX2 dBFS.",
+                ["Combined"] = "Combined dBFS.",
+                ["Combined dBFS"] = "Combined dBFS.",
+                ["Last"] = "Last dBFS.",
+                ["Last dBFS"] = "Last dBFS.",
+                ["Peak"] = "Peak dBFS.",
+                ["Peak dBFS"] = "Peak dBFS.",
+                ["Threshold"] = "Threshold dBFS.",
+                ["Threshold dBFS"] = "Threshold dBFS.",
+                ["Active"] = "Current active flag.",
+                ["Count"] = "Detection count.",
+                ["Detected"] = "Detection count.",
+                ["First Seen"] = "First timestamp.",
+                ["Last Seen"] = "Last timestamp.",
+                ["Comment"] = "Source/comment."
+            };
+        }
+
+        return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Frequency"] = "Detected channel frequency.",
+            ["Frequency Hz"] = "Detected channel frequency in Hz.",
+            ["Frequency MHz"] = "Detected channel frequency in MHz.",
+            ["MHz"] = "Detected channel frequency in MHz.",
+            ["Label"] = "Band or scan label associated with this frequency.",
+            ["Mode"] = "Demodulation mode used for listening or CHIRP export.",
+            ["Effective RX"] = "Actual receiver mode used by the backend scanner.",
+            ["RX Mode"] = "Receiver mode used by the backend scanner.",
+            ["RX Combine"] = "How RX1 and RX2 readings were combined.",
+            ["RX1"] = "RX1 signal level in dBFS.",
+            ["RX2"] = "RX2 signal level in dBFS.",
+            ["RX1 dBFS"] = "RX1 signal level in dBFS.",
+            ["RX2 dBFS"] = "RX2 signal level in dBFS.",
+            ["Combined"] = "Combined backend signal measurement in dBFS.",
+            ["Combined dBFS"] = "Combined backend signal measurement in dBFS.",
+            ["Last"] = "Most recent signal level seen for this active channel.",
+            ["Last dBFS"] = "Most recent signal level seen for this active channel.",
+            ["Peak"] = "Highest signal level seen for this active channel.",
+            ["Peak dBFS"] = "Highest signal level seen for this active channel.",
+            ["Threshold"] = "Backend active threshold used during the scan.",
+            ["Threshold dBFS"] = "Backend active threshold used during the scan.",
+            ["Active"] = "Whether this channel is currently considered active by the latest scan result.",
+            ["Count"] = "Number of scan passes where this channel was detected active.",
+            ["Detected"] = "Number of scan passes where this channel was detected active.",
+            ["First Seen"] = "First time this channel was added to the active list.",
+            ["Last Seen"] = "Most recent time this channel was detected active.",
+            ["Comment"] = "Source scan file or note associated with this detection."
+        };
+    }
+
+    private void HelpLevelCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        try
+        {
+            _config.HelpLevel = NormalizeHelpLevel(ComboText(HelpLevelCombo));
+            AddHelpfulTooltips();
+            StatusText.Text = $"Help level set to {_config.HelpLevel}.";
+        }
+        catch
+        {
+            // Ignore startup timing before controls are ready.
+        }
+    }
+
+    private void AddHelpfulTooltips()
+    {
+        var labelHelp = BuildLabelHelpDictionary();
 
         foreach (var label in FindAllLabels(this))
         {
@@ -276,36 +508,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var headerHelp = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Frequency"] = "Detected channel frequency.",
-            ["Frequency Hz"] = "Detected channel frequency in Hz.",
-            ["Frequency MHz"] = "Detected channel frequency in MHz.",
-            ["MHz"] = "Detected channel frequency in MHz.",
-            ["Label"] = "Band or scan label associated with this frequency.",
-            ["Mode"] = "Demodulation mode used for listening or CHIRP export.",
-            ["Effective RX"] = "Actual receiver mode used by the backend scanner.",
-            ["RX Mode"] = "Receiver mode used by the backend scanner.",
-            ["RX Combine"] = "How RX1 and RX2 readings were combined.",
-            ["RX1"] = "RX1 signal level in dBFS.",
-            ["RX2"] = "RX2 signal level in dBFS.",
-            ["RX1 dBFS"] = "RX1 signal level in dBFS.",
-            ["RX2 dBFS"] = "RX2 signal level in dBFS.",
-            ["Combined"] = "Combined backend signal measurement in dBFS.",
-            ["Combined dBFS"] = "Combined backend signal measurement in dBFS.",
-            ["Last"] = "Most recent signal level seen for this active channel.",
-            ["Last dBFS"] = "Most recent signal level seen for this active channel.",
-            ["Peak"] = "Highest signal level seen for this active channel.",
-            ["Peak dBFS"] = "Highest signal level seen for this active channel.",
-            ["Threshold"] = "Backend active threshold used during the scan.",
-            ["Threshold dBFS"] = "Backend active threshold used during the scan.",
-            ["Active"] = "Whether this channel is currently considered active by the latest scan result.",
-            ["Count"] = "Number of scan passes where this channel was detected active.",
-            ["Detected"] = "Number of scan passes where this channel was detected active.",
-            ["First Seen"] = "First time this channel was added to the active list.",
-            ["Last Seen"] = "Most recent time this channel was detected active.",
-            ["Comment"] = "Source scan file or note associated with this detection."
-        };
+        var headerHelp = BuildActiveChannelHeaderHelpDictionary();
 
         foreach (var column in ActiveChannelsGrid.Columns)
         {
@@ -2677,6 +2880,7 @@ private void SpectrumCanvas_MouseLeftButtonDown(object sender, MouseButtonEventA
         ScannerSamplesText.Text = _config.ScannerSamples.ToString(CultureInfo.InvariantCulture);
         ScannerSettleMsText.Text = _config.ScannerSettleMs.ToString(CultureInfo.InvariantCulture);
         ScannerProgressOverheadMsText.Text = _config.ScannerProgressOverheadMs.ToString(CultureInfo.InvariantCulture);
+        SetComboByText(HelpLevelCombo, NormalizeHelpLevel(_config.HelpLevel));
         DefaultChirpModeText.Text = _config.DefaultChirpMode;
         RepeatScanCheck.IsChecked = _config.RepeatScan;
         RepeatDelayText.Text = _config.RepeatDelaySeconds.ToString(CultureInfo.InvariantCulture);
@@ -2722,6 +2926,7 @@ private void SpectrumCanvas_MouseLeftButtonDown(object sender, MouseButtonEventA
         _config.ScannerSamples = (int)Math.Clamp(ParseLongOrDefault(ScannerSamplesText.Text, 8192), 1024, 262144);
         _config.ScannerSettleMs = (int)Math.Clamp(ParseLongOrDefault(ScannerSettleMsText.Text, 50), 0, 2000);
         _config.ScannerProgressOverheadMs = (int)Math.Clamp(ParseLongOrDefault(ScannerProgressOverheadMsText.Text, 95), 0, 1000);
+        _config.HelpLevel = NormalizeHelpLevel(ComboText(HelpLevelCombo));
         _config.DefaultChirpMode = string.IsNullOrWhiteSpace(DefaultChirpModeText.Text) ? "NFM" : DefaultChirpModeText.Text.Trim();
         _config.RepeatScan = RepeatScanCheck.IsChecked == true;
         _config.RepeatDelaySeconds = (int)Math.Clamp(ParseLongOrDefault(RepeatDelayText.Text, 2), 0, 3600);
@@ -2954,6 +3159,7 @@ public sealed class AppConfig
     public int ScannerSamples { get; set; } = 8192;
     public int ScannerSettleMs { get; set; } = 50;
     public int ScannerProgressOverheadMs { get; set; } = 95;
+    public string HelpLevel { get; set; } = "Intermediate";
     public string DefaultChirpMode { get; set; } = "NFM";
     public bool RepeatScan { get; set; } = false;
     public int RepeatDelaySeconds { get; set; } = 2;

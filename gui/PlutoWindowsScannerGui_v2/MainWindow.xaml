@@ -457,6 +457,7 @@
                                       <RowDefinition Height="Auto" />
                                       <RowDefinition Height="Auto" />
                                       <RowDefinition Height="Auto" />
+                                      <RowDefinition Height="Auto" />
 </Grid.RowDefinitions>
                                 <Label Grid.Row="0" Grid.Column="0" Content="Project root" />
                                 <TextBox Grid.Row="0" Grid.Column="1" x:Name="RepoRootText" IsReadOnly="True" />
@@ -478,11 +479,18 @@
                                   <TextBox Grid.Row="8" Grid.Column="1" x:Name="ScannerSettleMsText" Text="50" />
                                   <Label Grid.Row="9" Grid.Column="0" Content="Progress overhead ms" />
                                   <TextBox Grid.Row="9" Grid.Column="1" x:Name="ScannerProgressOverheadMsText" Text="95" />
+                                  <Label Grid.Row="10" Grid.Column="0" Content="Help Level" />
+                                  <ComboBox Grid.Row="10" Grid.Column="1" x:Name="HelpLevelCombo" SelectionChanged="HelpLevelCombo_SelectionChanged" MinWidth="160">
+                                      <ComboBoxItem Content="Novice" />
+                                      <ComboBoxItem Content="Intermediate" IsSelected="True" />
+                                      <ComboBoxItem Content="Expert" />
+                                  </ComboBox>
 
 
 
 
-                                <TextBlock Grid.Row="10" Grid.ColumnSpan="2" Margin="6,10" Foreground="{StaticResource MutedTextBrush}"
+
+                                <TextBlock Grid.Row="11" Grid.ColumnSpan="2" Margin="6,10" Foreground="{StaticResource MutedTextBrush}"
                                            TextWrapping="Wrap"
                                            Text="The GUI reads standard band choices from configs\bands.csv. If you edit that CSV, restart the GUI or click Reload Bands." />
                             </Grid>
