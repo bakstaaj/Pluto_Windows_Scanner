@@ -28,7 +28,7 @@ public partial class MainWindow : Window
     // GUI-side confirmation filter for detected active channels.
     // Backend "active" rows can include weak noise/spikes, so require both
     // the user threshold and a minimum signal-over-noise margin.
-    private const double DefaultActiveChannelMinSnrDb = 8.0;
+    private const double DefaultActiveChannelMinSnrDb = 20.0;
 
     private string? _lastAudioWav;
     private readonly ObservableCollection<ActiveChannel> ActiveChannels = new();
@@ -442,37 +442,69 @@ public partial class MainWindow : Window
             return;
         }
 
+        DataGridColumn? snrColumn = null;
+
         foreach (var column in ActiveChannelsGrid.Columns)
         {
             string headerText = ExtractHeaderText(column.Header);
             if (string.Equals(headerText, "SNR dB", StringComparison.OrdinalIgnoreCase))
             {
-                return;
+                snrColumn = column;
+                break;
             }
         }
 
-        var snrHeader = new TextBlock
+        if (snrColumn == null)
         {
-            Text = "SNR dB",
-            ToolTip = MakeOverlayToolTip("Signal-to-noise ratio estimate. Higher numbers mean the signal stands out more clearly above the local noise floor."),
-            Foreground = Brushes.White,
-            FontWeight = FontWeights.SemiBold
-        };
+            var snrHeader = new TextBlock
+            {
+                Text = "SNR dB",
+                ToolTip = MakeOverlayToolTip("Signal-to-noise ratio estimate. Higher numbers mean the signal stands out more clearly above the local noise floor."),
+                Foreground = Brushes.White,
+                FontWeight = FontWeights.SemiBold
+            };
 
-        ActiveChannelsGrid.Columns.Add(new DataGridTextColumn
+            snrColumn = new DataGridTextColumn
+            {
+                Header = snrHeader,
+                Binding = new Binding(nameof(ActiveChannel.SnrDb)) { StringFormat = "0.0" },
+                Width = new DataGridLength(80)
+            };
+        }
+        else
         {
-            Header = snrHeader,
-            Binding = new Binding(nameof(ActiveChannel.SnrDb)) { StringFormat = "0.0" },
-            Width = new DataGridLength(80)
-        });
+            ActiveChannelsGrid.Columns.Remove(snrColumn);
+        }
+
+        int insertIndex = ActiveChannelsGrid.Columns.Count;
+
+        for (int i = 0; i < ActiveChannelsGrid.Columns.Count; i++)
+        {
+            string headerText = ExtractHeaderText(ActiveChannelsGrid.Columns[i].Header);
+
+            if (headerText.Contains("Threshold", StringComparison.OrdinalIgnoreCase))
+            {
+                insertIndex = Math.Min(i + 1, ActiveChannelsGrid.Columns.Count);
+            }
+
+            if (headerText.Equals("Hits", StringComparison.OrdinalIgnoreCase) ||
+                headerText.Equals("Count", StringComparison.OrdinalIgnoreCase) ||
+                headerText.Equals("Detected", StringComparison.OrdinalIgnoreCase))
+            {
+                insertIndex = i;
+                break;
+            }
+        }
+
+        ActiveChannelsGrid.Columns.Insert(insertIndex, snrColumn);
     }
 
     private void SyncActiveFilterSlidersFromText()
     {
         try
         {
-            double threshold = ParseDoubleOrDefault(SquelchText.Text, -65.0);
-            double snr = ParseDoubleOrDefault(ActiveChannelMinSnrDbText.Text, 4.0);
+            double threshold = ParseDoubleOrDefault(SquelchText.Text, -40.0);
+            double snr = ParseDoubleOrDefault(ActiveChannelMinSnrDbText.Text, 20.0);
 
             threshold = Math.Clamp(threshold, ActiveThresholdSlider.Minimum, ActiveThresholdSlider.Maximum);
             snr = Math.Clamp(snr, ActiveSnrSlider.Minimum, ActiveSnrSlider.Maximum);
@@ -2347,10 +2379,10 @@ private void SpectrumCanvas_MouseLeftButtonDown(object sender, MouseButtonEventA
 
         double noiseFloorDbfs = EstimateNoiseFloorDbfs(LastScanPoints);
 
-        double manualThresholdDbfs = -65.0;
+        double manualThresholdDbfs = -40.0;
         if (!double.TryParse(SquelchText.Text.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out manualThresholdDbfs))
         {
-            manualThresholdDbfs = -65.0;
+            manualThresholdDbfs = -40.0;
         }
 
         double activeMinSnrDb = _config.ActiveChannelMinSnrDb;
@@ -3240,7 +3272,7 @@ public sealed class AppConfig
     public string SessionsDir { get; set; } = "sessions";
     public string BandsCsvPath { get; set; } = "configs/bands.csv";
     public int ListenSeconds { get; set; } = 30;
-    public double ActiveChannelMinSnrDb { get; set; } = 8.0;
+    public double ActiveChannelMinSnrDb { get; set; } = 20.0;
     public double ScannerChannelLowpassHz { get; set; } = 12000.0;
     public int ScannerSamples { get; set; } = 8192;
     public int ScannerSettleMs { get; set; } = 50;
