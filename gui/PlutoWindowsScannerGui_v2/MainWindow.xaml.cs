@@ -2098,7 +2098,38 @@ private void SpectrumCanvas_MouseLeftButtonDown(object sender, MouseButtonEventA
         return AudioRunMode.Record;
     }
 
-    private string AudioRunModeText(AudioRunMode mode)
+    
+    private static string AudioPopupWindowTitle(AudioRunMode mode)
+    {
+        return mode switch
+        {
+            AudioRunMode.LiveOnly => "Live Listening",
+            AudioRunMode.LiveAndRecord => "Live Listening + Recording",
+            _ => "Recording"
+        };
+    }
+
+    private static string AudioPopupActionText(AudioRunMode mode)
+    {
+        return mode switch
+        {
+            AudioRunMode.LiveOnly => "Live listening",
+            AudioRunMode.LiveAndRecord => "Live listening and recording",
+            _ => "Recording"
+        };
+    }
+
+    private static string AudioPopupStopButtonText(AudioRunMode mode)
+    {
+        return mode switch
+        {
+            AudioRunMode.LiveOnly => "Stop Listening",
+            AudioRunMode.LiveAndRecord => "Stop Listen + Record",
+            _ => "Stop Recording"
+        };
+    }
+
+private string AudioRunModeText(AudioRunMode mode)
     {
         return mode switch
         {
@@ -2244,6 +2275,7 @@ StopScanBeforeRecording();
         try
         {
             recordingWindow = new RecordingCountdownWindow(seconds, selected.FrequencyMhz);
+            recordingWindow.ConfigureAudioModeText(AudioPopupWindowTitle(audioRunMode), AudioPopupActionText(audioRunMode), AudioPopupStopButtonText(audioRunMode));
             recordingWindow.Owner = this;
             recordingWindow.StopRequested += (_, _) =>
             {

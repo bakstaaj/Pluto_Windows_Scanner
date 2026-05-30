@@ -1,5 +1,6 @@
 using System;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Controls;
 using System.Windows.Threading;
 
@@ -129,4 +130,75 @@ public sealed class RecordingCountdownWindow : Window
             // Best effort only.
         }
     }
+    public void ConfigureAudioModeText(string windowTitle, string actionText, string stopButtonText)
+    {
+        Title = windowTitle;
+        _audioModeActionText = actionText;
+        _audioModeStopButtonText = stopButtonText;
+
+        Loaded += (_, _) => ApplyAudioModeText();
+        ApplyAudioModeText();
+    }
+
+    private string _audioModeActionText = "Recording";
+    private string _audioModeStopButtonText = "Stop Recording";
+
+    private void ApplyAudioModeText()
+    {
+        try
+        {
+            foreach (var textBlock in FindPopupVisualChildren<TextBlock>(this))
+            {
+                if (string.IsNullOrWhiteSpace(textBlock.Text))
+                {
+                    continue;
+                }
+
+                textBlock.Text = textBlock.Text
+                    .Replace("Recording", _audioModeActionText)
+                    .Replace("recording", _audioModeActionText.ToLowerInvariant());
+            }
+
+            foreach (var button in FindPopupVisualChildren<Button>(this))
+            {
+                string content = button.Content?.ToString() ?? string.Empty;
+
+                if (content.Contains("Stop Recording", StringComparison.OrdinalIgnoreCase) ||
+                    content.Contains("Stop", StringComparison.OrdinalIgnoreCase))
+                {
+                    button.Content = _audioModeStopButtonText;
+                }
+            }
+        }
+        catch
+        {
+            // Best effort only; popup still works if text replacement fails.
+        }
+    }
+
+    private static IEnumerable<T> FindPopupVisualChildren<T>(DependencyObject parent) where T : DependencyObject
+    {
+        if (parent == null)
+        {
+            yield break;
+        }
+
+        int count = VisualTreeHelper.GetChildrenCount(parent);
+        for (int i = 0; i < count; i++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(parent, i);
+
+            if (child is T typed)
+            {
+                yield return typed;
+            }
+
+            foreach (T descendant in FindPopupVisualChildren<T>(child))
+            {
+                yield return descendant;
+            }
+        }
+    }
+
+
 }
