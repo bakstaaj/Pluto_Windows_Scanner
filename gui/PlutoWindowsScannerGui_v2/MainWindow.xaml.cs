@@ -68,6 +68,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        Loaded += (_, _) => AddHelpfulTooltips();
         InitializeListenProfilesFromConfig();
         Loaded += (_, _) => UpdateScannerSectionRows();
         ActiveChannelsGrid.ItemsSource = ActiveChannels;
@@ -164,6 +165,262 @@ public partial class MainWindow : Window
         catch
         {
             // Best effort during startup/layout changes.
+        }
+    }
+
+
+    private void AddHelpfulTooltips()
+    {
+        var labelHelp = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Mode"] = "Choose how Pluto Scan builds the scan: a saved band, a custom frequency range, or one single frequency.",
+            ["Band"] = "Standard bands are loaded from configs\\bands.csv. Selecting a band can also apply scan detector defaults.",
+            ["Single Hz"] = "Exact frequency in Hz for single-frequency scanning or chart/waterfall click selection.",
+            ["Step Hz"] = "Spacing between scan points. For FM voice channels, 12500 or 25000 Hz is common depending on the band.",
+            ["Start Hz"] = "First frequency in Hz for a custom range scan.",
+            ["Stop Hz"] = "Last frequency in Hz for a custom range scan.",
+            ["URI"] = "IIO connection string for the Pluto SDR. Default is usually ip:192.168.2.1.",
+            ["Rate Hz"] = "SDR sample rate. Higher rates cover more bandwidth but can be slower or noisier.",
+            ["RF BW Hz"] = "AD9361 RF bandwidth. This controls analog front-end bandwidth, not the final narrow channel detector width.",
+            ["Threshold dBFS"] = "Backend active threshold. Signals above this dBFS value can be considered active.",
+            ["RX Mode"] = "Receiver selection. Use single for RX1 only, dual for RX1/RX2, or auto to use what the backend detects.",
+            ["RX Combine"] = "How dual receiver measurements are combined. Max is usually best for scanning.",
+            ["Delay sec"] = "Delay between repeated scan passes when repeat scan is enabled.",
+            ["Profile"] = "Listen/record profile loaded from configs\\listen_profiles.json. Profiles control demodulation and audio filtering.",
+            ["Center Hz"] = "Center frequency for the live spectrum display.",
+            ["FFT"] = "FFT bin count for live spectrum. Larger values give finer frequency detail but may update slower.",
+            ["Average"] = "Number of live spectrum frames averaged together. Higher values smooth the display.",
+            ["Interval ms"] = "Live spectrum update interval in milliseconds.",
+            ["Gain Mode"] = "AD9361 gain control mode for live spectrum.",
+            ["Gain dB"] = "Manual gain value when gain mode is manual.",
+            ["Repo root"] = "Root folder for this Pluto Scan working copy.",
+            ["Sessions dir"] = "Folder where scan CSVs, WAV recordings, and troubleshooting files are written.",
+            ["Bands CSV"] = "Path to the standard-band list. Edit configs\\bands.csv to add or tune scan ranges.",
+            ["Listen seconds"] = "Default recording length for Listen / Record.",
+            ["Default CHIRP mode"] = "Mode written to exported CHIRP CSV rows when a band-specific mode is unavailable.",
+            ["Active min SNR dB"] = "GUI-side active-channel confirmation threshold above the estimated scan noise floor.",
+            ["Scanner channel LP Hz"] = "Narrow detector bandwidth around the tuned center. Use about 12000 for NOAA/NFM and 15000 for airband.",
+            ["Scanner samples"] = "Samples captured per frequency. Lower values scan faster; higher values can improve measurement stability.",
+            ["Scanner settle ms"] = "Delay after tuning before measuring power. Lower values scan faster; higher values may improve accuracy.",
+            ["Progress overhead ms"] = "Estimated per-channel overhead used only for the progress bar timing estimate."
+        };
+
+        foreach (var label in FindAllLabels(this))
+        {
+            string key = label.Content?.ToString()?.Trim() ?? string.Empty;
+            if (key.Length == 0)
+            {
+                continue;
+            }
+
+            if (labelHelp.TryGetValue(key, out string? help))
+            {
+                var tooltip = MakeOverlayToolTip(help);
+                label.ToolTip = tooltip;
+                AttachHelpToNeighborInput(label, tooltip);
+            }
+        }
+
+        AddActiveChannelHeaderTooltips();
+    }
+
+
+    private void AttachHelpToNeighborInput(Label label, ToolTip tooltip)
+    {
+        try
+        {
+            if (label.Parent is not Grid grid)
+            {
+                return;
+            }
+
+            int row = Grid.GetRow(label);
+            int col = Grid.GetColumn(label);
+
+            foreach (UIElement child in grid.Children)
+            {
+                if (child == label)
+                {
+                    continue;
+                }
+
+                if (Grid.GetRow(child) == row && Grid.GetColumn(child) == col + 1 &&
+                    child is FrameworkElement fe &&
+                    (child is TextBox || child is ComboBox || child is CheckBox))
+                {
+                    fe.ToolTip = MakeOverlayToolTip(ExtractToolTipText(tooltip));
+                    return;
+                }
+            }
+        }
+        catch
+        {
+            // Best effort only.
+        }
+    }
+
+    private static string ExtractToolTipText(ToolTip tooltip)
+    {
+        if (tooltip.Content is TextBlock tb)
+        {
+            return tb.Text;
+        }
+
+        return tooltip.Content?.ToString() ?? string.Empty;
+    }
+
+    private void AddActiveChannelHeaderTooltips()
+    {
+        if (ActiveChannelsGrid == null)
+        {
+            return;
+        }
+
+        var headerHelp = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Frequency"] = "Detected channel frequency.",
+            ["Frequency Hz"] = "Detected channel frequency in Hz.",
+            ["Frequency MHz"] = "Detected channel frequency in MHz.",
+            ["MHz"] = "Detected channel frequency in MHz.",
+            ["Label"] = "Band or scan label associated with this frequency.",
+            ["Mode"] = "Demodulation mode used for listening or CHIRP export.",
+            ["Effective RX"] = "Actual receiver mode used by the backend scanner.",
+            ["RX Mode"] = "Receiver mode used by the backend scanner.",
+            ["RX Combine"] = "How RX1 and RX2 readings were combined.",
+            ["RX1"] = "RX1 signal level in dBFS.",
+            ["RX2"] = "RX2 signal level in dBFS.",
+            ["RX1 dBFS"] = "RX1 signal level in dBFS.",
+            ["RX2 dBFS"] = "RX2 signal level in dBFS.",
+            ["Combined"] = "Combined backend signal measurement in dBFS.",
+            ["Combined dBFS"] = "Combined backend signal measurement in dBFS.",
+            ["Last"] = "Most recent signal level seen for this active channel.",
+            ["Last dBFS"] = "Most recent signal level seen for this active channel.",
+            ["Peak"] = "Highest signal level seen for this active channel.",
+            ["Peak dBFS"] = "Highest signal level seen for this active channel.",
+            ["Threshold"] = "Backend active threshold used during the scan.",
+            ["Threshold dBFS"] = "Backend active threshold used during the scan.",
+            ["Active"] = "Whether this channel is currently considered active by the latest scan result.",
+            ["Count"] = "Number of scan passes where this channel was detected active.",
+            ["Detected"] = "Number of scan passes where this channel was detected active.",
+            ["First Seen"] = "First time this channel was added to the active list.",
+            ["Last Seen"] = "Most recent time this channel was detected active.",
+            ["Comment"] = "Source scan file or note associated with this detection."
+        };
+
+        foreach (var column in ActiveChannelsGrid.Columns)
+        {
+            string headerText = ExtractHeaderText(column.Header);
+            if (string.IsNullOrWhiteSpace(headerText))
+            {
+                continue;
+            }
+
+            string help = headerHelp.TryGetValue(headerText, out string? exact)
+                ? exact
+                : $"Active channel column: {headerText}.";
+
+            column.Header = new TextBlock
+            {
+                Text = headerText,
+                ToolTip = MakeOverlayToolTip(help),
+                Foreground = Brushes.White,
+                FontWeight = FontWeights.SemiBold
+            };
+        }
+    }
+
+    private static string ExtractHeaderText(object? header)
+    {
+        if (header is TextBlock tb)
+        {
+            return tb.Text;
+        }
+
+        return header?.ToString()?.Trim() ?? string.Empty;
+    }
+
+    private static ToolTip MakeOverlayToolTip(string text)
+    {
+        return new ToolTip
+        {
+            Content = new TextBlock
+            {
+                Text = text,
+                TextWrapping = TextWrapping.Wrap,
+                MaxWidth = 360,
+                Foreground = Brushes.White
+            },
+            Background = new SolidColorBrush(Color.FromArgb(180, 0, 0, 0)),
+            Foreground = Brushes.White,
+            BorderBrush = new SolidColorBrush(Color.FromArgb(220, 148, 163, 184)),
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(8, 5, 8, 5),
+            Placement = System.Windows.Controls.Primitives.PlacementMode.Mouse
+        };
+    }
+
+
+    private static IEnumerable<Label> FindAllLabels(DependencyObject parent)
+    {
+        var seen = new HashSet<Label>();
+
+        foreach (var label in FindVisualChildren<Label>(parent))
+        {
+            if (seen.Add(label))
+            {
+                yield return label;
+            }
+        }
+
+        foreach (var label in FindLogicalLabels(parent))
+        {
+            if (seen.Add(label))
+            {
+                yield return label;
+            }
+        }
+    }
+
+    private static IEnumerable<Label> FindLogicalLabels(DependencyObject parent)
+    {
+        foreach (object child in LogicalTreeHelper.GetChildren(parent))
+        {
+            if (child is Label label)
+            {
+                yield return label;
+            }
+
+            if (child is DependencyObject dep)
+            {
+                foreach (var descendant in FindLogicalLabels(dep))
+                {
+                    yield return descendant;
+                }
+            }
+        }
+    }
+
+    private static IEnumerable<T> FindVisualChildren<T>(DependencyObject parent) where T : DependencyObject
+    {
+        if (parent == null)
+        {
+            yield break;
+        }
+
+        int count = VisualTreeHelper.GetChildrenCount(parent);
+        for (int i = 0; i < count; i++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(parent, i);
+
+            if (child is T typed)
+            {
+                yield return typed;
+            }
+
+            foreach (T descendant in FindVisualChildren<T>(child))
+            {
+                yield return descendant;
+            }
         }
     }
 
