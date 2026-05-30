@@ -13,6 +13,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Data;
 using System.Windows.Threading;
 using System.Windows.Input;
 using System.Windows.Controls;
@@ -68,7 +69,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        Loaded += (_, _) => AddHelpfulTooltips();
+        Loaded += (_, _) => { AddHelpfulTooltips(); AddActiveChannelSnrColumn(); SyncActiveFilterSlidersFromText(); };
         InitializeListenProfilesFromConfig();
         Loaded += (_, _) => UpdateScannerSectionRows();
         ActiveChannelsGrid.ItemsSource = ActiveChannels;
@@ -430,6 +431,89 @@ public partial class MainWindow : Window
         catch
         {
             // Ignore startup timing before controls are ready.
+        }
+    }
+
+
+    private void AddActiveChannelSnrColumn()
+    {
+        if (ActiveChannelsGrid == null)
+        {
+            return;
+        }
+
+        foreach (var column in ActiveChannelsGrid.Columns)
+        {
+            string headerText = ExtractHeaderText(column.Header);
+            if (string.Equals(headerText, "SNR dB", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+        }
+
+        var snrHeader = new TextBlock
+        {
+            Text = "SNR dB",
+            ToolTip = MakeOverlayToolTip("Signal-to-noise ratio estimate. Higher numbers mean the signal stands out more clearly above the local noise floor."),
+            Foreground = Brushes.White,
+            FontWeight = FontWeights.SemiBold
+        };
+
+        ActiveChannelsGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = snrHeader,
+            Binding = new Binding(nameof(ActiveChannel.SnrDb)) { StringFormat = "0.0" },
+            Width = new DataGridLength(80)
+        });
+    }
+
+    private void SyncActiveFilterSlidersFromText()
+    {
+        try
+        {
+            double threshold = ParseDoubleOrDefault(SquelchText.Text, -65.0);
+            double snr = ParseDoubleOrDefault(ActiveChannelMinSnrDbText.Text, 4.0);
+
+            threshold = Math.Clamp(threshold, ActiveThresholdSlider.Minimum, ActiveThresholdSlider.Maximum);
+            snr = Math.Clamp(snr, ActiveSnrSlider.Minimum, ActiveSnrSlider.Maximum);
+
+            ActiveThresholdSlider.Value = threshold;
+            ActiveSnrSlider.Value = snr;
+
+            ActiveThresholdSliderText.Text = $"{threshold:0.0} dBFS";
+            ActiveSnrSliderText.Text = $"{snr:0.0} dB";
+        }
+        catch
+        {
+            // Best effort during startup.
+        }
+    }
+
+    private void ActiveFilterSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        try
+        {
+            if (!IsLoaded)
+            {
+                return;
+            }
+
+            double threshold = Math.Round(ActiveThresholdSlider.Value, 1);
+            double snr = Math.Round(ActiveSnrSlider.Value, 1);
+
+            ActiveThresholdSliderText.Text = $"{threshold:0.0} dBFS";
+            ActiveSnrSliderText.Text = $"{snr:0.0} dB";
+
+            SquelchText.Text = threshold.ToString("0.0", CultureInfo.InvariantCulture);
+            ActiveChannelMinSnrDbText.Text = snr.ToString("0.0", CultureInfo.InvariantCulture);
+
+            _config.ActiveChannelMinSnrDb = snr;
+
+            StatusText.Text = $"Active filters: threshold {threshold:0.0} dBFS, min SNR {snr:0.0} dB.";
+        }
+        catch
+        {
+            // Best effort only.
         }
     }
 
@@ -2290,6 +2374,7 @@ private void SpectrumCanvas_MouseLeftButtonDown(object sender, MouseButtonEventA
                 continue;
             }
 
+            candidate.SnrDb = point.Dbfs - noiseFloorDbfs;
             UpsertActiveChannel(candidate);
         }
 
@@ -2881,6 +2966,7 @@ private void SpectrumCanvas_MouseLeftButtonDown(object sender, MouseButtonEventA
         ScannerSettleMsText.Text = _config.ScannerSettleMs.ToString(CultureInfo.InvariantCulture);
         ScannerProgressOverheadMsText.Text = _config.ScannerProgressOverheadMs.ToString(CultureInfo.InvariantCulture);
         SetComboByText(HelpLevelCombo, NormalizeHelpLevel(_config.HelpLevel));
+        SyncActiveFilterSlidersFromText();
         DefaultChirpModeText.Text = _config.DefaultChirpMode;
         RepeatScanCheck.IsChecked = _config.RepeatScan;
         RepeatDelayText.Text = _config.RepeatDelaySeconds.ToString(CultureInfo.InvariantCulture);
@@ -3194,6 +3280,8 @@ public sealed class BandDefinition
 
 public sealed class ActiveChannel : INotifyPropertyChanged
 {
+    public double SnrDb { get; set; } = double.NaN;
+
     public long FrequencyHz { get; set; }
     public string FrequencyMhz => (FrequencyHz / 1000000.0).ToString("F6", CultureInfo.InvariantCulture);
     public string Label { get; set; } = string.Empty;

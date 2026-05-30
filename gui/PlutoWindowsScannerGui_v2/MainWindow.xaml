@@ -387,10 +387,71 @@
 
                                           <Expander x:Name="ActiveChannelsExpander" Grid.Row="2" Header="Detected Active Channels" IsExpanded="True" Expanded="ScannerSectionExpander_Changed" Collapsed="ScannerSectionExpander_Changed">
 <GroupBox Grid.Row="2" Header="Detected Active Channels" Background="{StaticResource PanelBrush}">
-                        <DataGrid x:Name="ActiveChannelsGrid" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
+                        <Grid>
+                                      <Grid.RowDefinitions>
+                                          <RowDefinition Height="Auto" />
+                                          <RowDefinition Height="*" />
+                                      </Grid.RowDefinitions>
+
+                                      <Border Grid.Row="0" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="8" Margin="4">
+                                          <Grid>
+                                              <Grid.ColumnDefinitions>
+                                                  <ColumnDefinition Width="150" />
+                                                  <ColumnDefinition Width="*" />
+                                                  <ColumnDefinition Width="90" />
+                                                  <ColumnDefinition Width="140" />
+                                                  <ColumnDefinition Width="*" />
+                                                  <ColumnDefinition Width="80" />
+                                              </Grid.ColumnDefinitions>
+
+                                              <TextBlock Grid.Column="0"
+                                                         Text="Threshold dBFS"
+                                                         VerticalAlignment="Center"
+                                                         Foreground="{StaticResource TextBrush}"
+                                                         ToolTip="Adjusts the signal level required before a channel is considered active. Less negative is stricter; more negative is more sensitive." />
+                                              <Slider Grid.Column="1"
+                                                      x:Name="ActiveThresholdSlider"
+                                                      Minimum="-100"
+                                                      Maximum="-30"
+                                                      TickFrequency="1"
+                                                      IsSnapToTickEnabled="False"
+                                                      Value="-65"
+                                                      VerticalAlignment="Center"
+                                                      ValueChanged="ActiveFilterSlider_ValueChanged" />
+                                              <TextBlock Grid.Column="2"
+                                                         x:Name="ActiveThresholdSliderText"
+                                                         Text="-65.0 dBFS"
+                                                         VerticalAlignment="Center"
+                                                         Margin="8,0,0,0"
+                                                         Foreground="{StaticResource MutedTextBrush}" />
+
+                                              <TextBlock Grid.Column="3"
+                                                         Text="Min SNR dB"
+                                                         VerticalAlignment="Center"
+                                                         Foreground="{StaticResource TextBrush}"
+                                                         ToolTip="Adjusts how far above the local noise floor a signal must be before it is listed as active." />
+                                              <Slider Grid.Column="4"
+                                                      x:Name="ActiveSnrSlider"
+                                                      Minimum="0"
+                                                      Maximum="30"
+                                                      TickFrequency="0.5"
+                                                      IsSnapToTickEnabled="False"
+                                                      Value="4"
+                                                      VerticalAlignment="Center"
+                                                      ValueChanged="ActiveFilterSlider_ValueChanged" />
+                                              <TextBlock Grid.Column="5"
+                                                         x:Name="ActiveSnrSliderText"
+                                                         Text="4.0 dB"
+                                                         VerticalAlignment="Center"
+                                                         Margin="8,0,0,0"
+                                                         Foreground="{StaticResource MutedTextBrush}" />
+                                          </Grid>
+                                      </Border>
+
+                                      <DataGrid x:Name="ActiveChannelsGrid" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
                                   MouseDoubleClick="ActiveChannelsGrid_MouseDoubleClick"
                                   Background="#020617" Foreground="#e5e7eb" RowBackground="#111827" AlternatingRowBackground="#0f172a"
-                                  GridLinesVisibility="Horizontal" BorderBrush="{StaticResource BorderBrush}">
+                                  GridLinesVisibility="Horizontal" BorderBrush="{StaticResource BorderBrush}" Grid.Row="1">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Freq MHz" Binding="{Binding FrequencyMhz}" Width="110" />
                                 <DataGridTextColumn Header="Label" Binding="{Binding Label}" Width="2*" />
@@ -406,6 +467,7 @@
                                 <DataGridTextColumn Header="Comment" Binding="{Binding Comment}" Width="2*" />
                             </DataGrid.Columns>
                         </DataGrid>
+                                  </Grid>
                     </GroupBox>
                       </Expander>
 
