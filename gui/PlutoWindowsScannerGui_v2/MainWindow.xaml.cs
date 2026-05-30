@@ -25,6 +25,17 @@ namespace PlutoWindowsScannerGui;
 
 public partial class MainWindow : Window
 {
+    private enum AudioRunMode
+    {
+        Record,
+        LiveOnly,
+        LiveAndRecord
+    }
+
+    private AudioRunMode _pendingAudioRunMode = AudioRunMode.Record;
+    private bool _audioRunModeOverridePending = false;
+
+
     // GUI-side confirmation filter for detected active channels.
     // Backend "active" rows can include weak noise/spikes, so require both
     // the user threshold and a minimum signal-over-noise margin.
@@ -2015,7 +2026,103 @@ private void SpectrumCanvas_MouseLeftButtonDown(object sender, MouseButtonEventA
         }
     }
 
-    private void ListenButton_Click(object sender, RoutedEventArgs e)
+    
+    private void ListenLiveButton_Click(object sender, RoutedEventArgs e)
+    {
+        _pendingAudioRunMode = AudioRunMode.LiveOnly;
+        _audioRunModeOverridePending = true;
+
+        try
+        {
+            SetComboByText(AudioActionCombo, "Listen Live");
+        }
+        catch
+        {
+            // Best effort only.
+        }
+
+        ListenButton_Click(sender, e);
+    }
+
+    private void ListenAndRecordButton_Click(object sender, RoutedEventArgs e)
+    {
+        _pendingAudioRunMode = AudioRunMode.LiveAndRecord;
+        _audioRunModeOverridePending = true;
+
+        try
+        {
+            SetComboByText(AudioActionCombo, "Listen + Record");
+        }
+        catch
+        {
+            // Best effort only.
+        }
+
+        ListenButton_Click(sender, e);
+    }
+
+
+    private string GetAudioActionText()
+    {
+        try
+        {
+            if (AudioActionCombo.SelectedItem is ComboBoxItem item)
+            {
+                return item.Content?.ToString()?.Trim() ?? "Record";
+            }
+
+            string text = AudioActionCombo.Text?.Trim() ?? string.Empty;
+            return string.IsNullOrWhiteSpace(text) ? "Record" : text;
+        }
+        catch
+        {
+            return "Record";
+        }
+    }
+
+    private AudioRunMode GetSelectedAudioRunMode()
+    {
+        string text = GetAudioActionText();
+
+        if (text.Equals("Listen Live", StringComparison.OrdinalIgnoreCase))
+        {
+            return AudioRunMode.LiveOnly;
+        }
+
+        if (text.Equals("Listen + Record", StringComparison.OrdinalIgnoreCase) ||
+            text.Equals("Listen and Record", StringComparison.OrdinalIgnoreCase))
+        {
+            return AudioRunMode.LiveAndRecord;
+        }
+
+        return AudioRunMode.Record;
+    }
+
+    private string AudioRunModeText(AudioRunMode mode)
+    {
+        return mode switch
+        {
+            AudioRunMode.LiveOnly => "Listening live",
+            AudioRunMode.LiveAndRecord => "Listening live and recording",
+            _ => "Recording"
+        };
+    }
+
+    private void AudioActionCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        try
+        {
+            _pendingAudioRunMode = GetSelectedAudioRunMode();
+            _audioRunModeOverridePending = false;
+            StatusText.Text = $"Audio action: {GetAudioActionText()}.";
+        }
+        catch
+        {
+            // Ignore startup timing before controls are fully ready.
+        }
+    }
+
+private void ListenButton_Click(object sender, RoutedEventArgs e)
     {
         StopScanBeforeRecording();
 
@@ -2074,7 +2181,16 @@ private void SpectrumCanvas_MouseLeftButtonDown(object sender, MouseButtonEventA
 
     private async Task ListenAsync(ActiveChannel selected)
     {
-        StopScanBeforeRecording();
+        AudioRunMode audioRunMode = _audioRunModeOverridePending ? _pendingAudioRunMode : GetSelectedAudioRunMode();
+        _pendingAudioRunMode = AudioRunMode.Record;
+        _audioRunModeOverridePending = false;
+
+        bool audioPlayLive = audioRunMode == AudioRunMode.LiveOnly || audioRunMode == AudioRunMode.LiveAndRecord;
+        bool audioWriteWav = audioRunMode != AudioRunMode.LiveOnly;
+        string audioActionText = AudioRunModeText(audioRunMode);
+
+
+StopScanBeforeRecording();
 
         SaveUiToConfig();
         EnsureSessionsDir();
@@ -2097,7 +2213,7 @@ private void SpectrumCanvas_MouseLeftButtonDown(object sender, MouseButtonEventA
         string csv = IoPath.Combine(_config.SessionsDir, "audio_log.csv");
         string stopFile = IoPath.Combine(_config.SessionsDir, $"stop_listen_{selected.FrequencyHz}_{timestamp}.flag");
         try { if (File.Exists(stopFile)) File.Delete(stopFile); } catch { }
-        _lastAudioWav = wav;
+        _lastAudioWav = audioWriteWav ? wav : null;
 
         var args = new List<string>
         {
@@ -2118,10 +2234,10 @@ private void SpectrumCanvas_MouseLeftButtonDown(object sender, MouseButtonEventA
 
         AddOptionalNumericArg(args, "--bw", BwText.Text);
 
-        Log("Recording selected channel audio:");
+        Log($"{audioActionText} selected channel audio:");
         Log($"  {audioExe}");
         Log($"  {string.Join(" ", args)}");
-        StatusText.Text = $"Recording {seconds}s audio from {selected.FrequencyMhz} MHz...";
+        StatusText.Text = $"{audioActionText} {seconds}s from {selected.FrequencyMhz} MHz...";
 
         RecordingCountdownWindow? recordingWindow = null;
 
@@ -2142,6 +2258,17 @@ private void SpectrumCanvas_MouseLeftButtonDown(object sender, MouseButtonEventA
                     Log("Could not write stop file: " + stopEx.Message);
                 }
             };
+
+          if (audioPlayLive)
+          {
+              args.Add("--play-live");
+          }
+
+          if (!audioWriteWav)
+          {
+              args.Add("--no-wav");
+          }
+
             recordingWindow.Show();
 
             var psi = new ProcessStartInfo(audioExe, string.Join(" ", args))
@@ -2163,8 +2290,8 @@ private void SpectrumCanvas_MouseLeftButtonDown(object sender, MouseButtonEventA
             proc.BeginErrorReadLine();
             await proc.WaitForExitAsync();
             Log($"Audio recorder exited with code {proc.ExitCode}.");
-            StatusText.Text = File.Exists(wav) ? $"Audio saved: {IoPath.GetFileName(wav)}" : "Audio recorder finished.";
-            if (File.Exists(wav))
+            StatusText.Text = audioWriteWav && File.Exists(wav) ? $"Audio saved: {IoPath.GetFileName(wav)}" : $"{audioActionText} finished.";
+            if (audioRunMode == AudioRunMode.Record && File.Exists(wav))
             {
                 Process.Start(new ProcessStartInfo(wav) { UseShellExecute = true });
             }

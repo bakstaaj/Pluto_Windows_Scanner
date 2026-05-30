@@ -131,7 +131,13 @@
                     <MenuItem Header="Reload Bands" Click="ReloadBandsButton_Click" />
                     <MenuItem Header="Reset Defaults" Click="ResetConfigButton_Click" />
                 </MenuItem>
-            </Menu>
+            
+                <MenuItem Header="Audio">
+                    <MenuItem Header="Record Selected / Single Hz" Click="ListenButton_Click" />
+                    <MenuItem Header="Listen Live Selected / Single Hz" Click="ListenLiveButton_Click" />
+                    <MenuItem Header="Listen + Record Selected / Single Hz" Click="ListenAndRecordButton_Click" />
+                </MenuItem>
+</Menu>
         </StackPanel>
 
         <TabControl Grid.Row="1" x:Name="MainTabs" Background="#0f172a" Foreground="#111827">
@@ -273,7 +279,8 @@
                                       <Grid.RowDefinitions>
                                           <RowDefinition Height="Auto" />
                                           <RowDefinition Height="Auto" />
-                                      </Grid.RowDefinitions>
+                                                                                <RowDefinition Height="Auto" />
+</Grid.RowDefinitions>
 
                                       <Label Grid.Row="0" Grid.Column="0" Content="Profile" />
                                       <ComboBox Grid.Row="0" Grid.Column="1" x:Name="ListenProfileComboBox" SelectedIndex="0" MinWidth="260">
@@ -291,8 +298,17 @@
                                                  Foreground="{StaticResource MutedTextBrush}"
                                                  Margin="6,8,0,0"
                                                  TextWrapping="Wrap" />
-                                  </Grid>
-                              </GroupBox>
+                                  
+                                      <Label Grid.Row="2" Grid.Column="0" Content="Audio Action" />
+                                      <ComboBox Grid.Row="2" Grid.Column="1" x:Name="AudioActionCombo" SelectedIndex="0" MinWidth="260" SelectionChanged="AudioActionCombo_SelectionChanged">
+                                          <ComboBoxItem Content="Record" IsSelected="True" />
+                                          <ComboBoxItem Content="Listen Live" />
+                                          <ComboBoxItem Content="Listen + Record" />
+                                      </ComboBox>
+</Grid>
+                              
+                                  
+</GroupBox>
 
                               <GroupBox Grid.Row="2" Grid.ColumnSpan="2" Header="Live Spectrum" Background="{StaticResource PanelBrush}">
                                   <Grid Margin="4">
